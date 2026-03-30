@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimiters, rateLimit } from "@/lib/rate-limit";
 
 export async function POST() {
   const supabase = await createClient();
@@ -11,7 +12,12 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Atomically increment sessions_used via RPC or read-then-write
+  // Rate limit
+  const rl = await rateLimit(rateLimiters?.api, user.id);
+  if (!rl.success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("sessions_used, subscription_status")
@@ -22,7 +28,6 @@ export async function POST() {
     return NextResponse.json({ error: "Profile not found" }, { status: 404 });
   }
 
-  // Subscribed users don't consume sessions
   if (profile.subscription_status === "active") {
     return NextResponse.json({ sessionsUsed: profile.sessions_used });
   }

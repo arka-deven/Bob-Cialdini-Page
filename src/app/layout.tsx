@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import ThemeProvider from "@/components/ThemeProvider";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -17,6 +18,17 @@ export const metadata: Metadata = {
   title: "Dr. Robert Cialdini AI — The Science of Influence",
   description:
     "Get personalized insights on influence and persuasion from the world's foremost authority — Dr. Robert Cialdini.",
+  openGraph: {
+    title: "Dr. Robert Cialdini AI — The Science of Influence",
+    description:
+      "Get personalized insights on influence and persuasion from the world's foremost authority.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Dr. Robert Cialdini AI",
+    description: "Ask Dr. Cialdini anything about persuasion and influence.",
+  },
 };
 
 export default function RootLayout({
@@ -27,11 +39,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          {children}
+          <Toaster richColors position="top-center" />
+        </ThemeProvider>
       </body>
     </html>
   );

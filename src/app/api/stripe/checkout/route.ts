@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
+import { checkoutSchema } from "@/lib/validations";
+import { rateLimiters, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
-  const stripe = getStripe();
-  const { priceId } = await request.json();
-
   const supabase = await createClient();
   const {
     data: { user },
@@ -14,6 +13,22 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Rate limit
+  const rl = await rateLimit(rateLimiters?.checkout, user.id);
+  if (!rl.success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
+  // Validate input
+  const body = await request.json();
+  const parsed = checkoutSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
+  }
+
+  const stripe = getStripe();
+  const { priceId } = parsed.data;
 
   const { data: profile } = await supabase
     .from("profiles")
