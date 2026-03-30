@@ -6,7 +6,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AnimatedHero, FadeUp } from "@/components/AnimatedHero";
-import { StaggerContainer, StaggerItem, FadeInView } from "@/components/AnimatedSection";
+import { StaggerContainer, StaggerItem } from "@/components/AnimatedSection";
 import { cn } from "@/lib/utils";
 
 const STATS = [
@@ -86,21 +86,6 @@ export default function HomePage() {
           ))}
         </StaggerContainer>
       </section>
-
-      {/* CTA */}
-      <FadeInView className="px-6 py-24">
-        <div className="mx-auto max-w-3xl rounded-2xl border border-primary/20 bg-linear-to-b from-primary/10 to-transparent p-12 text-center">
-          <h2 className="text-3xl font-bold text-foreground">
-            Ready to Master the Science of Influence?
-          </h2>
-          <p className="mt-4 text-muted-foreground">
-            Start with 3 free sessions. No credit card required.
-          </p>
-          <Link href="/auth/signup" className={cn(buttonVariants({ size: "lg" }), "mt-8")}>
-            Get Started Free
-          </Link>
-        </div>
-      </FadeInView>
 
       <Footer />
     </div>
