@@ -60,43 +60,45 @@ export default function PricingPage() {
             </p>
           </div>
 
-          <div className="mt-16 grid gap-8 sm:grid-cols-3">
+          <div className="mt-16 grid grid-cols-1 items-stretch gap-8 sm:grid-cols-3">
             {PLANS.map((plan) => {
               const isPopular = "popular" in plan && plan.popular;
               return (
-                <Card key={plan.id} className={`relative ${isPopular ? "border-primary shadow-lg shadow-primary/10" : ""}`}>
-                  {isPopular && (
-                    <Badge className="absolute -top-3 left-1/2 -translate-x-1/2">Most Popular</Badge>
-                  )}
-                  <CardHeader>
-                    <CardTitle>{plan.name}</CardTitle>
-                    <CardDescription>{plan.description}</CardDescription>
-                    <div className="mt-4">
-                      <span className="text-4xl font-bold text-foreground">${plan.price}</span>
-                      {plan.interval && <span className="text-muted-foreground">/{plan.interval}</span>}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="space-y-3">
-                      {plan.features.map((feature) => (
-                        <li key={feature} className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <svg className="mt-0.5 h-4 w-4 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                    <Button
-                      onClick={() => handleSubscribe(plan.stripePriceId)}
-                      disabled={loading === plan.stripePriceId}
-                      variant={isPopular ? "default" : "outline"}
-                      className="mt-8 w-full"
-                    >
-                      {loading === plan.stripePriceId ? "Loading..." : plan.stripePriceId ? "Subscribe" : "Get Started Free"}
-                    </Button>
-                  </CardContent>
-                </Card>
+                <div key={plan.id} className={isPopular ? "pt-3" : "pt-3"}>
+                  <Card className={`relative flex h-full flex-col overflow-visible ${isPopular ? "border-primary shadow-lg shadow-primary/10" : ""}`}>
+                    {isPopular && (
+                      <Badge className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">Most Popular</Badge>
+                    )}
+                    <CardHeader>
+                      <CardTitle>{plan.name}</CardTitle>
+                      <CardDescription>{plan.description}</CardDescription>
+                      <div className="mt-4">
+                        <span className="text-4xl font-bold text-foreground">${plan.price}</span>
+                        {plan.interval && <span className="text-muted-foreground">/{plan.interval}</span>}
+                      </div>
+                    </CardHeader>
+                    <CardContent className="flex flex-1 flex-col">
+                      <ul className="flex-1 space-y-3">
+                        {plan.features.map((feature) => (
+                          <li key={feature} className="flex items-start gap-2 text-sm text-muted-foreground">
+                            <svg className="mt-0.5 h-4 w-4 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                      <Button
+                        onClick={() => handleSubscribe(plan.stripePriceId)}
+                        disabled={loading === plan.stripePriceId}
+                        variant={isPopular ? "default" : "outline"}
+                        className="mt-8 w-full"
+                      >
+                        {loading === plan.stripePriceId ? "Loading..." : plan.stripePriceId ? "Subscribe" : "Get Started Free"}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
               );
             })}
           </div>
