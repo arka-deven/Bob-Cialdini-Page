@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -38,38 +39,59 @@ export default function HomePage() {
       <Header />
 
       {/* Hero */}
-      <section className="relative overflow-hidden px-6 py-24 sm:py-32">
+      <section className="relative overflow-hidden px-6 py-20 sm:py-28">
         <div className="absolute inset-0 bg-linear-to-b from-primary/5 via-transparent to-transparent" />
-        <div className="relative mx-auto max-w-4xl text-center">
-          <AnimatedHero>
-            <Badge variant="secondary" className="mb-6 text-xs uppercase tracking-widest">
-              The Science of Influence
-            </Badge>
-          </AnimatedHero>
+        <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-12 lg:flex-row lg:gap-16">
+          {/* Text */}
+          <div className="flex-1 text-center lg:text-left">
+            <AnimatedHero>
+              <Badge variant="secondary" className="mb-6 text-xs uppercase tracking-widest">
+                The Science of Influence
+              </Badge>
+            </AnimatedHero>
 
-          <FadeUp delay={0.15}>
-            <h1 className="text-4xl font-bold leading-tight text-foreground sm:text-6xl">
-              Ask Dr. Robert Cialdini
-              <br />
-              <span className="text-primary">Anything About Persuasion</span>
-            </h1>
-          </FadeUp>
+            <FadeUp delay={0.15}>
+              <h1 className="text-4xl font-bold leading-tight text-foreground sm:text-5xl lg:text-6xl">
+                Ask Dr. Robert Cialdini
+                <br />
+                <span className="text-primary">Anything About Persuasion</span>
+              </h1>
+            </FadeUp>
 
-          <FadeUp delay={0.3}>
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-              Get personalized insights from the world&apos;s foremost authority on
-              influence and persuasion. Chat or call — powered by decades of
-              groundbreaking research.
-            </p>
-          </FadeUp>
+            <FadeUp delay={0.3}>
+              <p className="mt-6 max-w-xl text-lg text-muted-foreground lg:max-w-lg">
+                Get personalized insights from the world&apos;s foremost authority on
+                influence and persuasion. Chat or call — powered by decades of
+                groundbreaking research.
+              </p>
+            </FadeUp>
 
-          <FadeUp delay={0.45} className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link href="/auth/signup" className={cn(buttonVariants({ size: "lg" }))}>
-              Start Free — 3 Sessions Included
-            </Link>
-            <Link href="/pricing" className={cn(buttonVariants({ variant: "outline", size: "lg" }))}>
-              View Plans
-            </Link>
+            <FadeUp delay={0.45} className="mt-10 flex flex-col items-center gap-4 sm:flex-row lg:justify-start">
+              <Link href="/auth/signup" className={cn(buttonVariants({ size: "lg" }))}>
+                Start Free — 3 Sessions Included
+              </Link>
+              <Link href="/pricing" className={cn(buttonVariants({ variant: "outline", size: "lg" }))}>
+                View Plans
+              </Link>
+            </FadeUp>
+          </div>
+
+          {/* Photo */}
+          <FadeUp delay={0.3} className="relative shrink-0">
+            <div className="relative h-[400px] w-[300px] overflow-hidden rounded-2xl border border-border shadow-2xl shadow-primary/10 sm:h-[480px] sm:w-[360px]">
+              <Image
+                src="/robert-cialdini.jpg"
+                alt="Dr. Robert Cialdini"
+                fill
+                className="object-cover object-top"
+                priority
+                sizes="(max-width: 640px) 300px, 360px"
+              />
+            </div>
+            <div className="absolute -bottom-3 -right-3 rounded-xl border border-border bg-card px-4 py-2 shadow-lg">
+              <p className="text-xs font-medium text-muted-foreground">Author of</p>
+              <p className="text-sm font-bold text-foreground">Influence</p>
+            </div>
           </FadeUp>
         </div>
       </section>
