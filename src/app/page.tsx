@@ -4,30 +4,27 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { AnimatedHero, FadeUp } from "@/components/AnimatedHero";
-import Marquee from "@/components/Marquee";
-import ScrollLanding from "@/components/ScrollLanding";
+import { StaggerContainer, StaggerItem } from "@/components/AnimatedSection";
 import { cn } from "@/lib/utils";
 
 const STATS = [
-  { value: "#1", label: "Most Cited Social Psychologist" },
-  { value: "5M+", label: "Books Sold Worldwide" },
-  { value: "40+", label: "Years of Peer-Reviewed Research" },
-  { value: "Fortune 500", label: "Trusted Advisor" },
+  { value: "5M+", label: 'copies of "Influence" sold' },
+  { value: "40+", label: "years of research" },
+  { value: "Fortune 500", label: "companies trust his work" },
   { value: "NYT", label: "Bestselling Author" },
-  { value: "162", label: "Countries Reached" },
 ];
 
 export default function HomePage() {
   return (
-    <div className="flex flex-col">
+    <div className="flex h-screen flex-col overflow-hidden">
       <Header />
 
-      {/* Hero — first screen */}
-      <section className="relative flex min-h-[calc(100vh-57px)] flex-col">
+      {/* Hero */}
+      <section className="relative flex-1 overflow-hidden px-6 py-10 sm:py-16">
         <div className="absolute inset-0 bg-linear-to-b from-primary/5 via-transparent to-transparent" />
-
-        <div className="relative mx-auto flex flex-1 max-w-6xl flex-col items-center gap-10 px-6 py-10 lg:flex-row lg:gap-16 lg:py-16">
+        <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-12 lg:flex-row lg:gap-16">
           {/* Text */}
           <div className="flex-1 text-center lg:text-left">
             <AnimatedHero>
@@ -62,8 +59,8 @@ export default function HomePage() {
             </FadeUp>
           </div>
 
-          {/* Photo — visible on first screen, hidden on lg when scroll takes over */}
-          <FadeUp delay={0.3} className="relative shrink-0 lg:block">
+          {/* Photo */}
+          <FadeUp delay={0.3} className="relative shrink-0">
             <div className="relative h-85 w-65 overflow-hidden rounded-2xl border border-border shadow-2xl shadow-primary/10 sm:h-105 sm:w-80">
               <Image
                 src="/robert-cialdini.jpg"
@@ -71,20 +68,24 @@ export default function HomePage() {
                 fill
                 className="object-cover object-top"
                 priority
-                sizes="(max-width: 640px) 260px, 320px"
+                sizes="(max-width: 640px) 300px, 360px"
               />
             </div>
           </FadeUp>
         </div>
-
-        {/* Marquee social proof — pinned at bottom of first screen */}
-        <div className="border-y border-border bg-muted/50 py-4">
-          <Marquee items={STATS} speed={25} />
-        </div>
       </section>
 
-      {/* Scroll-driven principles section */}
-      <ScrollLanding />
+      {/* Social Proof */}
+      <section className="border-y border-border bg-muted/50 px-6 py-4">
+        <StaggerContainer className="mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-x-8 gap-y-4 text-center text-sm text-muted-foreground" stagger={0.08}>
+          {STATS.map((stat, i) => (
+            <StaggerItem key={stat.value} className="flex items-center gap-2">
+              {i > 0 && <Separator orientation="vertical" className="mr-6 hidden h-4 sm:block" />}
+              <span><strong className="text-foreground">{stat.value}</strong> {stat.label}</span>
+            </StaggerItem>
+          ))}
+        </StaggerContainer>
+      </section>
 
       <Footer />
     </div>
