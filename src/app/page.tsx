@@ -3,28 +3,11 @@ import Image from "next/image";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AnimatedHero, FadeUp } from "@/components/AnimatedHero";
-import { AnimatedSection, StaggerContainer, StaggerItem, FadeInView } from "@/components/AnimatedSection";
+import { StaggerContainer, StaggerItem, FadeInView } from "@/components/AnimatedSection";
 import { cn } from "@/lib/utils";
-
-const PRINCIPLES = [
-  { title: "Reciprocity", description: "People feel obligated to return favors. Learn how to ethically leverage this powerful principle." },
-  { title: "Commitment & Consistency", description: "Once someone commits, they're driven to stay consistent. Master the art of meaningful commitments." },
-  { title: "Social Proof", description: "People look to others to determine correct behavior. Understand how to build authentic proof." },
-  { title: "Authority", description: "Expertise and credibility drive influence. Learn to establish and communicate authority effectively." },
-  { title: "Liking", description: "People say yes to those they like. Discover the science behind building genuine rapport." },
-  { title: "Scarcity", description: "Limited availability increases perceived value. Apply scarcity ethically to drive action." },
-  { title: "Unity", description: "Shared identity drives deeper influence. Harness the power of belonging and togetherness." },
-];
-
-const STEPS = [
-  { step: "01", title: "Create Your Account", desc: "Sign up with Google, email, or phone in seconds." },
-  { step: "02", title: "Chat or Call", desc: "Type your question or start a voice call with Dr. Cialdini AI." },
-  { step: "03", title: "Get Expert Insights", desc: "Receive personalized answers grounded in decades of scientific research." },
-];
 
 const STATS = [
   { value: "5M+", label: 'copies of "Influence" sold' },
@@ -106,60 +89,6 @@ export default function HomePage() {
             </StaggerItem>
           ))}
         </StaggerContainer>
-      </section>
-
-      {/* How It Works */}
-      <AnimatedSection className="px-6 py-24">
-        <div className="mx-auto max-w-5xl">
-          <FadeInView>
-            <h2 className="text-center text-3xl font-bold text-foreground sm:text-4xl">How It Works</h2>
-            <p className="mx-auto mt-4 max-w-xl text-center text-muted-foreground">
-              Get expert guidance on influence and persuasion in three simple steps.
-            </p>
-          </FadeInView>
-
-          <StaggerContainer className="mt-16 grid gap-8 sm:grid-cols-3" stagger={0.12}>
-            {STEPS.map((item) => (
-              <StaggerItem key={item.step}>
-                <Card className="h-full text-center transition-shadow hover:shadow-lg hover:shadow-primary/5">
-                  <CardContent className="pt-8">
-                    <span className="text-3xl font-bold text-primary/30">{item.step}</span>
-                    <h3 className="mt-4 text-lg font-semibold text-foreground">{item.title}</h3>
-                    <p className="mt-2 text-sm text-muted-foreground">{item.desc}</p>
-                  </CardContent>
-                </Card>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-        </div>
-      </AnimatedSection>
-
-      {/* 7 Principles */}
-      <section className="border-t border-border bg-muted/50 px-6 py-24">
-        <div className="mx-auto max-w-5xl">
-          <FadeInView>
-            <h2 className="text-center text-3xl font-bold text-foreground sm:text-4xl">
-              The 7 Principles of Persuasion
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-center text-muted-foreground">
-              Explore the foundational principles that have shaped the science of influence worldwide.
-            </p>
-          </FadeInView>
-
-          <StaggerContainer className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-3" stagger={0.08}>
-            {PRINCIPLES.map((p, i) => (
-              <StaggerItem key={p.title}>
-                <Card className="h-full transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-1">
-                  <CardContent className="pt-6">
-                    <span className="text-sm font-semibold text-primary">0{i + 1}</span>
-                    <h3 className="mt-2 text-lg font-semibold text-foreground">{p.title}</h3>
-                    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{p.description}</p>
-                  </CardContent>
-                </Card>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-        </div>
       </section>
 
       {/* CTA */}
