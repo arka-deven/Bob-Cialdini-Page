@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
-import { emailLoginSchema, phoneSchema, otpSchema, type EmailLoginInput, type PhoneInput, type OtpInput } from "@/lib/validations";
+import { emailLoginSchema, type EmailLoginInput } from "@/lib/validations";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,15 +14,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator";
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"email" | "phone">("email");
-  const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [phoneValue, setPhoneValue] = useState("");
   const supabase = createClient();
 
   const emailForm = useForm<EmailLoginInput>({ resolver: zodResolver(emailLoginSchema) });
-  const phoneForm = useForm<PhoneInput>({ resolver: zodResolver(phoneSchema) });
-  const otpForm = useForm<OtpInput>({ resolver: zodResolver(otpSchema) });
 
   async function handleGoogleLogin() {
     setLoading(true);
@@ -44,21 +39,6 @@ export default function LoginPage() {
       toast.success("Welcome back!");
       window.location.href = "/chat";
     }
-  }
-
-  async function onPhoneSubmit(data: PhoneInput) {
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ phone: data.phone });
-    if (error) toast.error(error.message);
-    else { setOtpSent(true); setPhoneValue(data.phone); toast.success("Code sent!"); }
-    setLoading(false);
-  }
-
-  async function onOtpSubmit(data: OtpInput) {
-    setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({ phone: phoneValue, token: data.token, type: "sms" });
-    if (error) { toast.error(error.message); setLoading(false); }
-    else { window.location.href = "/chat"; }
   }
 
   return (
@@ -86,51 +66,19 @@ export default function LoginPage() {
               <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-4 text-xs text-muted-foreground">or</span>
             </div>
 
-            <div className="flex rounded-lg bg-muted p-1">
-              <button onClick={() => setMode("email")} className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${mode === "email" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
-                Email
-              </button>
-              <button onClick={() => setMode("phone")} className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${mode === "phone" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}>
-                Phone
-              </button>
-            </div>
-
-            {mode === "email" ? (
-              <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
-                <div>
-                  <Input type="email" placeholder="Email address" {...emailForm.register("email")} />
-                  {emailForm.formState.errors.email && <p className="mt-1 text-xs text-destructive">{emailForm.formState.errors.email.message}</p>}
-                </div>
-                <div>
-                  <Input type="password" placeholder="Password" {...emailForm.register("password")} />
-                  {emailForm.formState.errors.password && <p className="mt-1 text-xs text-destructive">{emailForm.formState.errors.password.message}</p>}
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Signing in..." : "Sign In"}
-                </Button>
-              </form>
-            ) : otpSent ? (
-              <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-4">
-                <p className="text-sm text-muted-foreground">Enter the code sent to {phoneValue}</p>
-                <div>
-                  <Input type="text" placeholder="6-digit code" maxLength={6} className="text-center text-2xl tracking-widest" {...otpForm.register("token")} />
-                  {otpForm.formState.errors.token && <p className="mt-1 text-xs text-destructive">{otpForm.formState.errors.token.message}</p>}
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Verifying..." : "Verify Code"}
-                </Button>
-              </form>
-            ) : (
-              <form onSubmit={phoneForm.handleSubmit(onPhoneSubmit)} className="space-y-4">
-                <div>
-                  <Input type="tel" placeholder="+1 (555) 000-0000" {...phoneForm.register("phone")} />
-                  {phoneForm.formState.errors.phone && <p className="mt-1 text-xs text-destructive">{phoneForm.formState.errors.phone.message}</p>}
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Sending code..." : "Send Verification Code"}
-                </Button>
-              </form>
-            )}
+            <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
+              <div>
+                <Input type="email" placeholder="Email address" {...emailForm.register("email")} />
+                {emailForm.formState.errors.email && <p className="mt-1 text-xs text-destructive">{emailForm.formState.errors.email.message}</p>}
+              </div>
+              <div>
+                <Input type="password" placeholder="Password" {...emailForm.register("password")} />
+                {emailForm.formState.errors.password && <p className="mt-1 text-xs text-destructive">{emailForm.formState.errors.password.message}</p>}
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Signing in..." : "Sign In"}
+              </Button>
+            </form>
 
             <p className="text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
