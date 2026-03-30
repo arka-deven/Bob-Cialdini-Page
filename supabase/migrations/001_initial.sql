@@ -3,6 +3,8 @@ create table if not exists public.profiles (
   id uuid references auth.users on delete cascade primary key,
   email text,
   full_name text,
+  phone text,
+  newsletter boolean default false,
   stripe_customer_id text unique,
   stripe_subscription_id text unique,
   subscription_status text default 'inactive'
@@ -35,11 +37,13 @@ create policy "Service role full access"
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, email, full_name)
+  insert into public.profiles (id, email, full_name, phone, newsletter)
   values (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', '')
+    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name', ''),
+    coalesce(new.raw_user_meta_data->>'phone_number', new.phone, ''),
+    coalesce((new.raw_user_meta_data->>'newsletter')::boolean, false)
   );
   return new;
 end;

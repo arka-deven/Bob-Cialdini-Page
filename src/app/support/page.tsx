@@ -35,7 +35,7 @@ export default function SupportPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
 
-      <main className="flex-1 px-6 py-24">
+      <main className="flex-1 px-6 py-12">
         <AnimatedSection className="mx-auto max-w-3xl">
           <div className="text-center">
             <h1 className="text-4xl font-bold text-foreground">Support</h1>
