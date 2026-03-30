@@ -45,6 +45,9 @@ export default function Header() {
           <Link href="/pricing" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
             Pricing
           </Link>
+          <Link href="/support" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
+            Support
+          </Link>
           {user ? (
             <>
               <Link href="/chat" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
@@ -78,6 +81,7 @@ export default function Header() {
         <div className="border-t border-border bg-background px-6 py-4 sm:hidden">
           <div className="flex flex-col gap-3">
             <Link href="/pricing" className="text-sm text-muted-foreground" onClick={() => setMenuOpen(false)}>Pricing</Link>
+            <Link href="/support" className="text-sm text-muted-foreground" onClick={() => setMenuOpen(false)}>Support</Link>
             {user ? (
               <>
                 <Link href="/chat" className="text-sm text-muted-foreground" onClick={() => setMenuOpen(false)}>Chat</Link>
