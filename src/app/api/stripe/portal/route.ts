@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { createClient } from "@/lib/supabase/server";
+import { rateLimiters, rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
-  const stripe = getStripe();
   const supabase = await createClient();
   const {
     data: { user },
@@ -11,6 +11,11 @@ export async function POST(request: Request) {
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const rl = await rateLimit(rateLimiters?.checkout, user.id);
+  if (!rl.success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   const { data: profile } = await supabase
@@ -26,9 +31,14 @@ export async function POST(request: Request) {
     );
   }
 
+  const stripe = getStripe();
+
+  // Validate origin against known app URL
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get("origin") || "";
+
   const session = await stripe.billingPortal.sessions.create({
     customer: profile.stripe_customer_id,
-    return_url: `${request.headers.get("origin")}/chat`,
+    return_url: `${appUrl}/chat`,
   });
 
   return NextResponse.json({ url: session.url });

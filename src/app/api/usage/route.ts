@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimiters, rateLimit } from "@/lib/rate-limit";
 import { FREE_MESSAGE_LIMIT, FREE_VOICE_SECONDS } from "@/lib/constants";
+
+const usageSchema = z.object({
+  type: z.enum(["message", "voice"]),
+  voiceSeconds: z.number().int().min(0).max(300).optional(),
+});
 
 // GET: Check current usage
 export async function GET() {
@@ -26,7 +32,7 @@ export async function GET() {
     .single();
 
   if (!profile) {
-    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const isSubscribed = profile.subscription_status === "active";
@@ -57,21 +63,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Strict rate limit: 10 per 10 seconds (prevents rapid message spam)
+  // Strict rate limit: 10 per 10 seconds
   const rl = await rateLimit(rateLimiters?.api, `usage:${user.id}`);
   if (!rl.success) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const body = await request.json();
-  const { type, voiceSeconds } = body as {
-    type: "message" | "voice";
-    voiceSeconds?: number;
-  };
-
-  if (!type || !["message", "voice"].includes(type)) {
-    return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+  // Validate input with zod
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
+
+  const parsed = usageSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
+  }
+
+  const { type, voiceSeconds } = parsed.data;
 
   // Fetch current profile
   const { data: profile } = await supabase
@@ -81,7 +92,7 @@ export async function POST(request: Request) {
     .single();
 
   if (!profile) {
-    return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   const isSubscribed = profile.subscription_status === "active";
@@ -101,20 +112,28 @@ export async function POST(request: Request) {
       });
     }
 
-    const newCount = used + 1;
-    await supabase
+    // Atomic update: only increment if current value matches what we read
+    const { data, error } = await supabase
       .from("profiles")
-      .update({ messages_used: newCount })
-      .eq("id", user.id);
+      .update({ messages_used: used + 1 })
+      .eq("id", user.id)
+      .eq("messages_used", used)
+      .select("messages_used")
+      .single();
+
+    if (error || !data) {
+      // Race condition — re-read and check
+      return NextResponse.json({ error: "Please retry" }, { status: 409 });
+    }
 
     return NextResponse.json({
       allowed: true,
-      remaining: FREE_MESSAGE_LIMIT - newCount,
+      remaining: FREE_MESSAGE_LIMIT - data.messages_used,
     });
   }
 
   if (type === "voice") {
-    const seconds = Math.min(Math.max(0, Math.round(voiceSeconds ?? 0)), 300);
+    const seconds = voiceSeconds ?? 0;
     const used = profile.voice_seconds_used ?? 0;
 
     if (used >= FREE_VOICE_SECONDS) {
@@ -125,15 +144,23 @@ export async function POST(request: Request) {
       });
     }
 
-    const newTotal = Math.min(used + seconds, FREE_VOICE_SECONDS + 10); // small grace
-    await supabase
+    const newTotal = Math.min(used + seconds, FREE_VOICE_SECONDS + 10);
+
+    const { data, error } = await supabase
       .from("profiles")
       .update({ voice_seconds_used: newTotal })
-      .eq("id", user.id);
+      .eq("id", user.id)
+      .eq("voice_seconds_used", used)
+      .select("voice_seconds_used")
+      .single();
+
+    if (error || !data) {
+      return NextResponse.json({ error: "Please retry" }, { status: 409 });
+    }
 
     return NextResponse.json({
       allowed: true,
-      remaining: Math.max(0, FREE_VOICE_SECONDS - newTotal),
+      remaining: Math.max(0, FREE_VOICE_SECONDS - data.voice_seconds_used),
     });
   }
 

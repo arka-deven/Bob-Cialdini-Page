@@ -3,12 +3,17 @@ import { getStripe } from "@/lib/stripe";
 import { createClient } from "@supabase/supabase-js";
 import type Stripe from "stripe";
 
-// Use service role key for webhook handler (no user session)
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function getSupabaseAdmin() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
+}
+
+function isValidUUID(id: string | null | undefined): id is string {
+  return !!id && UUID_REGEX.test(id);
 }
 
 export async function POST(request: Request) {
@@ -25,10 +30,10 @@ export async function POST(request: Request) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
+  } catch {
+    // Don't leak error details — log server-side only
     return NextResponse.json(
-      { error: `Webhook signature verification failed: ${message}` },
+      { error: "Webhook verification failed" },
       { status: 400 }
     );
   }
@@ -46,16 +51,16 @@ export async function POST(request: Request) {
             ).metadata.supabase_user_id
           : null);
 
-      if (userId) {
-        await supabaseAdmin
-          .from("profiles")
-          .update({
-            subscription_status: "active",
-            stripe_customer_id: session.customer as string,
-            stripe_subscription_id: session.subscription as string,
-          })
-          .eq("id", userId);
-      }
+      if (!isValidUUID(userId)) break;
+
+      await supabaseAdmin
+        .from("profiles")
+        .update({
+          subscription_status: "active",
+          stripe_customer_id: session.customer as string,
+          stripe_subscription_id: session.subscription as string,
+        })
+        .eq("id", userId);
       break;
     }
 
@@ -63,15 +68,15 @@ export async function POST(request: Request) {
       const subscription = event.data.object as Stripe.Subscription;
       const userId = subscription.metadata.supabase_user_id;
 
-      if (userId) {
-        await supabaseAdmin
-          .from("profiles")
-          .update({
-            subscription_status:
-              subscription.status === "active" ? "active" : "inactive",
-          })
-          .eq("id", userId);
-      }
+      if (!isValidUUID(userId)) break;
+
+      await supabaseAdmin
+        .from("profiles")
+        .update({
+          subscription_status:
+            subscription.status === "active" ? "active" : "inactive",
+        })
+        .eq("id", userId);
       break;
     }
 
@@ -79,15 +84,15 @@ export async function POST(request: Request) {
       const subscription = event.data.object as Stripe.Subscription;
       const userId = subscription.metadata.supabase_user_id;
 
-      if (userId) {
-        await supabaseAdmin
-          .from("profiles")
-          .update({
-            subscription_status: "inactive",
-            stripe_subscription_id: null,
-          })
-          .eq("id", userId);
-      }
+      if (!isValidUUID(userId)) break;
+
+      await supabaseAdmin
+        .from("profiles")
+        .update({
+          subscription_status: "inactive",
+          stripe_subscription_id: null,
+        })
+        .eq("id", userId);
       break;
     }
   }

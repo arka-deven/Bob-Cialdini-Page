@@ -14,17 +14,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Rate limit
   const rl = await rateLimit(rateLimiters?.checkout, user.id);
   if (!rl.success) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  // Validate input
   const body = await request.json();
   const parsed = checkoutSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
   const stripe = getStripe();
@@ -51,12 +49,15 @@ export async function POST(request: Request) {
       .eq("id", user.id);
   }
 
+  // Use env var for origin to prevent header manipulation
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get("origin") || "";
+
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
     mode: "subscription",
-    success_url: `${request.headers.get("origin")}/chat?upgraded=true`,
-    cancel_url: `${request.headers.get("origin")}/pricing`,
+    success_url: `${appUrl}/chat?upgraded=true`,
+    cancel_url: `${appUrl}/pricing`,
     subscription_data: {
       metadata: { supabase_user_id: user.id },
     },
