@@ -45,6 +45,11 @@ export const checkoutSchema = z.object({
     .string()
     .min(1, "Price ID is required")
     .startsWith("price_", "Invalid price ID format"),
+  coupon: z
+    .string()
+    .max(50)
+    .regex(/^[a-zA-Z0-9_-]*$/, "Invalid coupon format")
+    .optional(),
 });
 
 export type EmailLoginInput = z.infer<typeof emailLoginSchema>;

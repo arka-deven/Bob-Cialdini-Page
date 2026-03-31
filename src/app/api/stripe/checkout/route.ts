@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   }
 
   const stripe = getStripe();
-  const { priceId } = parsed.data;
+  const { priceId, coupon } = parsed.data;
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -54,7 +54,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
   }
 
-  const session = await stripe.checkout.sessions.create({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sessionParams: any = {
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
     mode: "subscription",
@@ -63,7 +64,15 @@ export async function POST(request: Request) {
     subscription_data: {
       metadata: { supabase_user_id: user.id },
     },
-  });
+  };
+
+  if (coupon) {
+    sessionParams.discounts = [{ coupon }];
+  } else {
+    sessionParams.allow_promotion_codes = true;
+  }
+
+  const session = await stripe.checkout.sessions.create(sessionParams);
 
   return NextResponse.json({ url: session.url });
 }

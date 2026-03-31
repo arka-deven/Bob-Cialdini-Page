@@ -14,6 +14,8 @@ import { PLANS } from "@/lib/constants";
 export default function PricingPage() {
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
   const [loading, setLoading] = useState(false);
+  const [coupon, setCoupon] = useState("");
+  const [couponApplied, setCouponApplied] = useState(false);
   const router = useRouter();
 
   const monthly = PLANS.find((p) => p.id === "monthly")!;
@@ -30,7 +32,10 @@ export default function PricingPage() {
     const res = await fetch("/api/stripe/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId: selected.stripePriceId }),
+      body: JSON.stringify({
+        priceId: selected.stripePriceId,
+        ...(couponApplied && coupon ? { coupon } : {}),
+      }),
     });
 
     if (res.status === 401) {
@@ -175,10 +180,49 @@ export default function PricingPage() {
                   </div>
                 </div>
 
+                {/* Coupon code */}
+                <div className="mt-6 flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Coupon Code"
+                    value={coupon}
+                    onChange={(e) => {
+                      setCoupon(e.target.value.toUpperCase());
+                      setCouponApplied(false);
+                    }}
+                    className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0 px-4"
+                    onClick={() => {
+                      if (coupon.trim()) {
+                        setCouponApplied(true);
+                        toast.success(`Coupon "${coupon}" applied`);
+                      }
+                    }}
+                    disabled={!coupon.trim() || couponApplied}
+                  >
+                    {couponApplied ? "Applied" : "Apply"}
+                  </Button>
+                </div>
+                {couponApplied && (
+                  <div className="mt-2 flex items-center justify-between text-xs">
+                    <span className="text-green-500">Coupon &quot;{coupon}&quot; applied</span>
+                    <button
+                      onClick={() => { setCoupon(""); setCouponApplied(false); }}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
                 <Button
                   onClick={handleSubscribe}
                   disabled={loading}
-                  className="mt-6 w-full"
+                  className="mt-4 w-full"
                   size="lg"
                 >
                   {loading ? "Loading..." : "Subscribe Now"}
