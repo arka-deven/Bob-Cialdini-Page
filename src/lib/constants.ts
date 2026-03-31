@@ -4,13 +4,13 @@ export const SITE_DESCRIPTION =
 
 // Delphi embed URLs — set display mode in Delphi Studio > Integrations
 export const DELPHI_CHAT_URL =
-  process.env.NEXT_PUBLIC_DELPHI_CHAT_URL || "https://embed.delphi.ai/YOUR_CLONE_ID";
+  process.env.NEXT_PUBLIC_DELPHI_CHAT_URL || "";
 export const DELPHI_VOICE_URL =
-  process.env.NEXT_PUBLIC_DELPHI_VOICE_URL || "https://embed.delphi.ai/YOUR_CLONE_ID";
+  process.env.NEXT_PUBLIC_DELPHI_VOICE_URL || "";
 
 // Free tier limits
-export const FREE_SESSION_LIMIT = 3; // 3 free sessions (chat or voice)
-export const FREE_VOICE_SECONDS = 180; // 3 minutes voice per session
+export const FREE_MESSAGE_LIMIT = 3;
+export const FREE_VOICE_SECONDS = 180; // 3 minutes
 
 // Subscription tiers — update price IDs from your Stripe dashboard
 export const PLANS = [
@@ -21,8 +21,8 @@ export const PLANS = [
     price: 0,
     interval: null,
     features: [
-      "3 free chat sessions",
-      "3-minute voice call trial",
+      "3 free text messages",
+      "3-minute voice call",
       "Text-based responses",
       "Basic persuasion insights",
     ],
@@ -35,7 +35,7 @@ export const PLANS = [
     price: 29,
     interval: "month" as const,
     features: [
-      "Unlimited chat sessions",
+      "Unlimited text messages",
       "Unlimited voice calls",
       "Deep-dive persuasion strategies",
       "Priority response time",

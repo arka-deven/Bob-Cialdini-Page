@@ -9,7 +9,8 @@ create table if not exists public.profiles (
   stripe_subscription_id text unique,
   subscription_status text default 'inactive'
     check (subscription_status in ('active', 'inactive', 'past_due', 'canceled')),
-  sessions_used integer default 0,
+  messages_used integer default 0,
+  voice_seconds_used integer default 0,
   created_at timestamp with time zone default now(),
   updated_at timestamp with time zone default now()
 );
