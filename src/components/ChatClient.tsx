@@ -9,6 +9,75 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 
+function ChatInput() {
+  const [text, setText] = useState("");
+  const [listening, setListening] = useState(false);
+  const [fileName, setFileName] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFileName(file.name);
+      toast.success(`Attached: ${file.name}`);
+    }
+  }
+
+  function toggleVoice() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { toast.error("Voice input not supported in this browser"); return; }
+
+    if (listening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setListening(false);
+      return;
+    }
+
+    const recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+    recognition.onresult = (e: SpeechRecognitionEvent) => {
+      const transcript = e.results[0][0].transcript;
+      setText((prev) => (prev ? prev + " " : "") + transcript);
+    };
+    recognition.onend = () => setListening(false);
+    recognition.onerror = () => setListening(false);
+    recognitionRef.current = recognition;
+    recognition.start();
+    setListening(true);
+  }
+
+  return (
+    <div className="border-t border-border px-4 py-3">
+      {fileName && (
+        <div className="mx-auto mb-2 flex max-w-2xl items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground">
+          <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>
+          <span className="truncate">{fileName}</span>
+          <button onClick={() => { setFileName(""); if (fileRef.current) fileRef.current.value = ""; }} className="ml-auto shrink-0 hover:text-foreground">&times;</button>
+        </div>
+      )}
+      <div className="mx-auto flex max-w-2xl items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2.5">
+        <input ref={fileRef} type="file" className="hidden" accept="image/*,.pdf,.doc,.docx,.txt" onChange={handleFileChange} />
+        <button onClick={() => fileRef.current?.click()} className="shrink-0 text-muted-foreground hover:text-foreground" aria-label="Attach file">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" /></svg>
+        </button>
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Type a message..."
+          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+        />
+        <button onClick={toggleVoice} className={`shrink-0 transition-colors ${listening ? "text-red-500 animate-pulse" : "text-muted-foreground hover:text-foreground"}`} aria-label="Voice input">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 interface ChatClientProps {
   isSubscribed: boolean;
   messagesUsed: number;
@@ -121,10 +190,6 @@ export default function ChatClient({
             Past sessions appear here once connected.
           </p>
         </div>
-        <div className="border-t border-border px-4 py-3">
-          <p className="truncate text-xs text-muted-foreground">{userEmail}</p>
-          <p className="text-xs text-muted-foreground">{isSubscribed ? "Pro" : "Free"}</p>
-        </div>
       </aside>
 
       {/* Main area */}
@@ -154,9 +219,6 @@ export default function ChatClient({
             </div>
           </div>
 
-          <Link href="/profile" className="ml-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary hover:bg-primary/20" title={userEmail}>
-            {userEmail.charAt(0).toUpperCase()}
-          </Link>
         </div>
 
         {/* Content */}
@@ -193,25 +255,15 @@ export default function ChatClient({
               <p className="text-sm font-medium text-foreground">Dr. Cialdini</p>
               <p className="mt-1 text-xs text-muted-foreground">Ask me anything about influence and persuasion</p>
             </div>
-            <div className="border-t border-border px-4 py-3">
-              <div className="mx-auto flex max-w-2xl items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2.5">
-                <button className="shrink-0 text-muted-foreground hover:text-foreground" aria-label="Attach">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" /></svg>
-                </button>
-                <span className="flex-1 text-sm text-muted-foreground">Type a message...</span>
-                <button className="shrink-0 text-muted-foreground hover:text-foreground" aria-label="Voice input">
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
-                </button>
+            {!isSubscribed && (
+              <div className="flex items-center justify-center gap-3 px-4 pt-2">
+                <Badge variant="secondary" className="text-xs">
+                  {messagesRemaining > 0 ? `${messagesRemaining}/${messagesLimit} messages` : "0 messages left"}
+                </Badge>
+                <Link href="/pricing" className="text-xs font-medium text-primary hover:underline">Upgrade</Link>
               </div>
-              {!isSubscribed && (
-                <div className="mt-2 flex items-center justify-center gap-3">
-                  <Badge variant="secondary" className="text-xs">
-                    {messagesRemaining > 0 ? `${messagesRemaining}/${messagesLimit} messages` : "0 messages left"}
-                  </Badge>
-                  <Link href="/pricing" className="text-xs font-medium text-primary hover:underline">Upgrade</Link>
-                </div>
-              )}
-            </div>
+            )}
+            <ChatInput />
           </div>
         ) : (
           /* Voice placeholder */
