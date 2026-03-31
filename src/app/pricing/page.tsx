@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { toast } from "sonner";
@@ -63,6 +64,14 @@ export default function PricingPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1 px-6 py-16">
+        <div className="mx-auto max-w-5xl">
+          <Link href="/chat" className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+            Back to Chat
+          </Link>
+        </div>
         <div className="mx-auto grid max-w-5xl gap-12 lg:grid-cols-[1fr_380px]">
 
           {/* Left column */}

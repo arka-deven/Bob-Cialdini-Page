@@ -53,9 +53,6 @@ export default function Header() {
           </Link>
           {user ? (
             <>
-              <Link href="/chat" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-                Chat
-              </Link>
               <Button variant="outline" size="sm" onClick={handleSignOut}>
                 Sign Out
               </Button>
@@ -108,7 +105,6 @@ export default function Header() {
             <Link href="/support" className="text-sm text-muted-foreground" onClick={() => setMenuOpen(false)}>Support</Link>
             {user ? (
               <>
-                <Link href="/chat" className="text-sm text-muted-foreground" onClick={() => setMenuOpen(false)}>Chat</Link>
                 <Link href="/profile" className="text-sm text-muted-foreground" onClick={() => setMenuOpen(false)}>Profile</Link>
                 <button onClick={handleSignOut} className="text-left text-sm text-muted-foreground">Sign Out</button>
               </>

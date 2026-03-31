@@ -176,7 +176,8 @@ export default function ChatClient({
           <span className="text-sm font-semibold text-foreground">Sessions</span>
           <button onClick={() => setSidebarOpen(false)} className="rounded-md p-1 text-muted-foreground hover:text-foreground">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              <rect x="3" y="3" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v18" />
             </svg>
           </button>
         </div>
@@ -203,7 +204,8 @@ export default function ChatClient({
             aria-label="Toggle sidebar"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+              <rect x="3" y="3" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v18" />
             </svg>
           </button>
 
@@ -218,6 +220,14 @@ export default function ChatClient({
                 Voice
               </Button>
             </div>
+            {!isSubscribed && (
+              <div className="flex items-center gap-3">
+                <Badge variant="secondary" className="text-xs">
+                  {messagesRemaining > 0 ? `${messagesRemaining}/${messagesLimit} messages` : "0 messages left"}
+                </Badge>
+                <Link href="/pricing" className={cn(buttonVariants({ size: "sm" }), "text-sm font-semibold")}>Upgrade</Link>
+              </div>
+            )}
           </div>
 
         </div>
@@ -256,14 +266,6 @@ export default function ChatClient({
               <p className="text-sm font-medium text-foreground">Dr. Cialdini</p>
               <p className="mt-1 text-xs text-muted-foreground">Ask me anything about influence and persuasion</p>
             </div>
-            {!isSubscribed && (
-              <div className="flex items-center justify-center gap-3 px-4 pt-2">
-                <Badge variant="secondary" className="text-xs">
-                  {messagesRemaining > 0 ? `${messagesRemaining}/${messagesLimit} messages` : "0 messages left"}
-                </Badge>
-                <Link href="/pricing" className="text-xs font-medium text-primary hover:underline">Upgrade</Link>
-              </div>
-            )}
             <ChatInput />
           </div>
         ) : (
