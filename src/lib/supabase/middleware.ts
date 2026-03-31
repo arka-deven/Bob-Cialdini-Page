@@ -50,13 +50,12 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect logged-in users away from auth pages
-  const authPaths = ["/auth/login", "/auth/signup"];
-  const isAuthPage = authPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  );
+  // Redirect logged-in users from auth pages and landing page to chat
+  const redirectToChatPaths = ["/auth/login", "/auth/signup", "/"];
+  const shouldRedirectToChat =
+    user && redirectToChatPaths.includes(request.nextUrl.pathname);
 
-  if (isAuthPage && user) {
+  if (shouldRedirectToChat) {
     const url = request.nextUrl.clone();
     url.pathname = "/chat";
     return NextResponse.redirect(url);
