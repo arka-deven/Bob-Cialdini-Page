@@ -33,8 +33,7 @@ export default function ChatClient({
   const [voiceSecondsUsed, setVoiceSecondsUsed] = useState(initialVoiceSeconds);
   const [chatUrl, setChatUrl] = useState(initialChatUrl);
   const [voiceUrl, setVoiceUrl] = useState(initialVoiceUrl);
-  const [voiceActive, setVoiceActive] = useState(false);
-  const voiceTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const voiceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const messagesRemaining = isSubscribed ? Infinity : messagesLimit - messagesUsed;
@@ -95,65 +94,33 @@ export default function ChatClient({
     }
   }, [isSubscribed, messagesLimit]);
 
-  // Voice timer
-  function startVoice() {
-    if (voiceLocked) return;
-    setVoiceActive(true);
+  // Auto voice tracking — syncs to server every 15s when voice tab is active
+  useEffect(() => {
+    if (isSubscribed || mode !== "voice" || voiceLocked) return;
 
-    voiceTimerRef.current = setInterval(() => {
-      setVoiceSecondsUsed((prev) => {
-        const next = prev + 1;
-        if (!isSubscribed && next >= voiceSecondsLimit) {
-          stopVoice(next);
-          toast.error("Voice call time is up. Upgrade for unlimited calls.");
-        }
-        // Sync with server every 15 seconds
-        if (next % 15 === 0) {
-          fetch("/api/usage", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ type: "voice", voiceSeconds: 15 }),
-          });
-        }
-        return next;
-      });
-    }, 1000);
-  }
-
-  function stopVoice(finalSeconds?: number) {
-    if (voiceTimerRef.current) {
-      clearInterval(voiceTimerRef.current);
-      voiceTimerRef.current = null;
-    }
-
-    // Final sync
-    const elapsed = (finalSeconds ?? voiceSecondsUsed) - initialVoiceSeconds;
-    if (elapsed > 0) {
+    voiceIntervalRef.current = setInterval(() => {
       fetch("/api/usage", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "voice", voiceSeconds: elapsed }),
+        body: JSON.stringify({ type: "voice", voiceSeconds: 15 }),
+      }).then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          if (!data.allowed) {
+            setVoiceSecondsUsed(voiceSecondsLimit);
+            setVoiceUrl("");
+            toast.error("Voice call time is up. Upgrade for unlimited calls.");
+          } else {
+            setVoiceSecondsUsed(voiceSecondsLimit - data.remaining);
+          }
+        }
       });
-    }
+    }, 15000);
 
-    if (!isSubscribed && (finalSeconds ?? voiceSecondsUsed) >= voiceSecondsLimit) {
-      setVoiceUrl("");
-    }
-
-    setVoiceActive(false);
-  }
-
-  useEffect(() => {
     return () => {
-      if (voiceTimerRef.current) clearInterval(voiceTimerRef.current);
+      if (voiceIntervalRef.current) clearInterval(voiceIntervalRef.current);
     };
-  }, []);
-
-  function formatTime(seconds: number) {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, "0")}`;
-  }
+  }, [isSubscribed, mode, voiceLocked, voiceSecondsLimit]);
 
   const currentLocked = mode === "chat" ? chatLocked : voiceLocked;
 
@@ -171,7 +138,7 @@ export default function ChatClient({
           ) : (
             <Badge variant="secondary" className="text-xs">
               {voiceSecondsRemaining > 0
-                ? `${formatTime(voiceSecondsRemaining)} voice time left`
+                ? "Voice call active"
                 : "Voice time used up"}
             </Badge>
           )}
@@ -224,7 +191,7 @@ export default function ChatClient({
         <div className="flex flex-1 flex-col px-4 py-4 sm:px-6">
           <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4">
             {/* Mode toggle */}
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center justify-center">
               <div className="flex rounded-lg bg-muted p-1">
                 <Button
                   variant={mode === "chat" ? "secondary" : "ghost"}
@@ -249,24 +216,6 @@ export default function ChatClient({
                   Voice
                 </Button>
               </div>
-
-              {/* Voice timer controls */}
-              {mode === "voice" && !isSubscribed && (
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm text-muted-foreground">
-                    {formatTime(voiceSecondsUsed)} / {formatTime(voiceSecondsLimit)}
-                  </span>
-                  {!voiceActive ? (
-                    <Button size="xs" onClick={startVoice} disabled={voiceSecondsRemaining <= 0}>
-                      Start Timer
-                    </Button>
-                  ) : (
-                    <Button size="xs" variant="destructive" onClick={() => stopVoice()}>
-                      Stop
-                    </Button>
-                  )}
-                </div>
-              )}
             </div>
 
             {/* Iframe */}
