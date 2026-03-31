@@ -215,9 +215,13 @@ export default function ChatClient({
         </div>
 
         {/* Right — profile icon */}
-        <div className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary" title={userEmail}>
+        <Link
+          href="/profile"
+          className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+          title={userEmail}
+        >
           {userEmail.charAt(0).toUpperCase()}
-        </div>
+        </Link>
       </div>
 
       {currentLocked ? (
