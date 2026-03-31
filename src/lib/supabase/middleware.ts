@@ -10,6 +10,11 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
+  // Let the callback handle its own session — middleware must not interfere
+  if (request.nextUrl.pathname.startsWith("/auth/callback")) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -37,28 +42,41 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const pathname = request.nextUrl.pathname;
+
   // Protected routes - redirect to login if not authenticated
   const protectedPaths = ["/chat", "/profile", "/api/stripe/checkout", "/api/stripe/portal", "/api/profile"];
-  const isProtected = protectedPaths.some((path) =>
-    request.nextUrl.pathname.startsWith(path)
-  );
+  const isProtected = protectedPaths.some((path) => pathname.startsWith(path));
 
   if (isProtected && !user) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/auth/login";
-    url.searchParams.set("redirect", request.nextUrl.pathname);
-    return NextResponse.redirect(url);
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/auth/login";
+    redirectUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(redirectUrl);
   }
 
-  // Redirect logged-in users from auth pages and landing page to chat
-  const redirectToChatPaths = ["/auth/login", "/auth/signup", "/"];
-  const shouldRedirectToChat =
-    user && redirectToChatPaths.includes(request.nextUrl.pathname);
+  // Phone verification enforcement — chat requires a verified phone
+  const hasPhone = user?.phone || user?.user_metadata?.phone_number;
 
-  if (shouldRedirectToChat) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/chat";
-    return NextResponse.redirect(url);
+  if (user && !hasPhone && pathname.startsWith("/chat")) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/auth/verify-phone";
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // Already verified phone — bounce away from verify-phone page
+  if (user && hasPhone && pathname === "/auth/verify-phone") {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/chat";
+    return NextResponse.redirect(redirectUrl);
+  }
+
+  // Redirect logged-in users from auth pages and landing page
+  const redirectPaths = ["/auth/login", "/auth/signup", "/"];
+  if (user && redirectPaths.includes(pathname)) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = hasPhone ? "/chat" : "/auth/verify-phone";
+    return NextResponse.redirect(redirectUrl);
   }
 
   return supabaseResponse;

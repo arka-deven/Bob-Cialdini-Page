@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
   const supabase = createClient();
 
   const emailForm = useForm<EmailLoginInput>({ resolver: zodResolver(emailLoginSchema) });
@@ -37,7 +39,8 @@ export default function LoginPage() {
       setLoading(false);
     } else {
       toast.success("Welcome back!");
-      window.location.href = "/chat";
+      router.refresh();
+      router.push("/chat");
     }
   }
 
