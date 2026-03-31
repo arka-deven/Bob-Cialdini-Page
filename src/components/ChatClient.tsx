@@ -161,58 +161,63 @@ export default function ChatClient({
   return (
     <div className="flex flex-1 flex-col">
       {/* Top bar */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-2 sm:px-6">
-        {/* Mode toggle */}
-        <div className="flex rounded-lg bg-muted p-1">
-          <Button
-            variant={mode === "chat" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setMode("chat")}
-            className="gap-2"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            Chat
-          </Button>
-          <Button
-            variant={mode === "voice" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setMode("voice")}
-            className="gap-2"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-            </svg>
-            Voice
-          </Button>
+      <div className="flex items-center border-b border-border px-6 py-2">
+        {/* Left — sidebar icon placeholder */}
+        <button className="mr-4 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground" aria-label="Menu">
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+          </svg>
+        </button>
+
+        {/* Center — mode toggle + usage */}
+        <div className="flex flex-1 items-center justify-center gap-4">
+          <div className="flex rounded-lg bg-muted p-1">
+            <Button
+              variant={mode === "chat" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setMode("chat")}
+              className="gap-2"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              Chat
+            </Button>
+            <Button
+              variant={mode === "voice" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setMode("voice")}
+              className="gap-2"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+              </svg>
+              Voice
+            </Button>
+          </div>
+
+          {!isSubscribed && (
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="text-xs">
+                {mode === "chat"
+                  ? messagesRemaining > 0
+                    ? `${messagesRemaining}/${messagesLimit} messages`
+                    : "0 messages left"
+                  : voiceSecondsRemaining > 0
+                  ? "Voice active"
+                  : "Voice time up"}
+              </Badge>
+              <Link href="/pricing" className="text-xs font-medium text-primary hover:underline">
+                Upgrade
+              </Link>
+            </div>
+          )}
         </div>
 
-        {/* Usage info + upgrade */}
-        {!isSubscribed && (
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="text-xs">
-              {mode === "chat"
-                ? messagesRemaining > 0
-                  ? `${messagesRemaining}/${messagesLimit} messages`
-                  : "0 messages left"
-                : voiceSecondsRemaining > 0
-                ? "Voice active"
-                : "Voice time up"}
-            </Badge>
-            <Link
-              href="/pricing"
-              className="text-xs font-medium text-primary hover:underline"
-            >
-              Upgrade
-            </Link>
-          </div>
-        )}
-
-        {/* User email */}
-        <span className="hidden text-xs text-muted-foreground sm:block">
-          {userEmail}
-        </span>
+        {/* Right — profile icon */}
+        <div className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary" title={userEmail}>
+          {userEmail.charAt(0).toUpperCase()}
+        </div>
       </div>
 
       {currentLocked ? (
