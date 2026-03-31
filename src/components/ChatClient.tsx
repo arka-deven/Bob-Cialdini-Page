@@ -172,7 +172,7 @@ export default function ChatClient({
 
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-card transition-all duration-300 ease-in-out lg:relative lg:z-auto ${sidebarOpen ? "translate-x-0 lg:w-64" : "-translate-x-full lg:translate-x-0 lg:w-0 lg:border-0 lg:overflow-hidden"}`}>
-        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+        <div className="flex h-[49px] items-center justify-between border-b border-border px-4">
           <span className="text-sm font-semibold text-foreground">Sessions</span>
           <button onClick={() => setSidebarOpen(false)} className="rounded-md p-1 text-muted-foreground hover:text-foreground">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -197,18 +197,7 @@ export default function ChatClient({
       {/* Main area */}
       <div className="flex flex-1 flex-col">
         {/* Top bar */}
-        <div className="flex items-center border-b border-border px-4 py-2.5">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="mr-3 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-            aria-label="Toggle sidebar"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <rect x="3" y="3" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v18" />
-            </svg>
-          </button>
-
+        <div className="flex h-[49px] items-center border-b border-border px-4">
           <div className="flex flex-1 items-center justify-center gap-4">
             <div className="flex rounded-lg bg-muted p-1">
               <Button variant={mode === "chat" ? "secondary" : "ghost"} size="sm" onClick={() => setMode("chat")} className="gap-2">
