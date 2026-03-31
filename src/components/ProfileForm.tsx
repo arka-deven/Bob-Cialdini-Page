@@ -15,6 +15,7 @@ interface ProfileFormProps {
   phone: string;
   subscriptionStatus: string;
   newsletter: boolean;
+  backToChat?: boolean;
 }
 
 export default function ProfileForm({
@@ -23,6 +24,7 @@ export default function ProfileForm({
   phone: initialPhone,
   subscriptionStatus,
   newsletter: initialNewsletter,
+  backToChat,
 }: ProfileFormProps) {
   const [fullName, setFullName] = useState(initialName);
   const [phone, setPhone] = useState(initialPhone);
@@ -60,14 +62,23 @@ export default function ProfileForm({
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Profile</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage your account</p>
+    <div className="mx-auto max-w-lg space-y-4">
+      <div className="flex items-center gap-3">
+        {backToChat && (
+          <Link href="/chat" className="rounded-md p-1 text-muted-foreground hover:text-foreground" aria-label="Back to Chat">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+          </Link>
+        )}
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Profile</h1>
+          <p className="text-sm text-muted-foreground">Manage your account</p>
+        </div>
       </div>
 
       <Card>
-        <CardContent className="space-y-4 pt-6">
+        <CardContent className="space-y-3 pt-5">
           <div>
             <label className="text-xs font-medium text-muted-foreground">Email</label>
             <Input value={email} disabled className="mt-1 opacity-60" />
@@ -110,10 +121,8 @@ export default function ProfileForm({
         </CardContent>
       </Card>
 
-      <Separator />
-
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-foreground">Membership</p>

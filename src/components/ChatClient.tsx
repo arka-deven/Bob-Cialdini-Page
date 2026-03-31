@@ -198,6 +198,18 @@ export default function ChatClient({
       <div className="flex flex-1 flex-col">
         {/* Top bar */}
         <div className="flex h-[49px] items-center border-b border-border px-4">
+          {!sidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="mr-3 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Open sidebar"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <rect x="3" y="3" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 3v18" />
+              </svg>
+            </button>
+          )}
           <div className="flex flex-1 items-center justify-center gap-4">
             <div className="flex rounded-lg bg-muted p-1">
               <Button variant={mode === "chat" ? "secondary" : "ghost"} size="sm" onClick={() => setMode("chat")} className="gap-2">
