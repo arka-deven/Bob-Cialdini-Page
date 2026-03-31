@@ -17,6 +17,7 @@ interface ChatClientProps {
   chatUrl: string;
   voiceUrl: string;
   userId: string;
+  userEmail: string;
 }
 
 export default function ChatClient({
@@ -27,20 +28,53 @@ export default function ChatClient({
   voiceSecondsLimit,
   chatUrl: initialChatUrl,
   voiceUrl: initialVoiceUrl,
+  userEmail,
 }: ChatClientProps) {
   const [mode, setMode] = useState<"chat" | "voice">("chat");
   const [messagesUsed, setMessagesUsed] = useState(initialMessagesUsed);
   const [voiceSecondsUsed, setVoiceSecondsUsed] = useState(initialVoiceSeconds);
   const [chatUrl, setChatUrl] = useState(initialChatUrl);
   const [voiceUrl, setVoiceUrl] = useState(initialVoiceUrl);
+  const [ssoToken, setSsoToken] = useState<string | null>(null);
+  const chatIframeRef = useRef<HTMLIFrameElement>(null);
+  const voiceIframeRef = useRef<HTMLIFrameElement>(null);
   const voiceIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const messagesRemaining = isSubscribed ? Infinity : messagesLimit - messagesUsed;
   const voiceSecondsRemaining = isSubscribed ? Infinity : voiceSecondsLimit - voiceSecondsUsed;
 
   const chatLocked = !isSubscribed && messagesRemaining <= 0 && !chatUrl;
   const voiceLocked = !isSubscribed && voiceSecondsRemaining <= 0 && !voiceUrl;
+
+  // Fetch Delphi SSO token on mount
+  useEffect(() => {
+    fetch("/api/delphi/token")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.token) setSsoToken(data.token);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Send SSO token to iframe once loaded
+  const handleIframeLoad = useCallback(
+    (iframe: HTMLIFrameElement | null) => {
+      if (!iframe || !ssoToken) return;
+      iframe.contentWindow?.postMessage(
+        { type: "sso_login", token: ssoToken },
+        "https://embed.delphi.ai"
+      );
+    },
+    [ssoToken]
+  );
+
+  // Re-send SSO when token arrives after iframe already loaded
+  useEffect(() => {
+    if (ssoToken) {
+      handleIframeLoad(chatIframeRef.current);
+      handleIframeLoad(voiceIframeRef.current);
+    }
+  }, [ssoToken, handleIframeLoad]);
 
   // Listen for postMessage from Delphi iframe to count messages
   useEffect(() => {
@@ -126,30 +160,60 @@ export default function ChatClient({
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* Usage bar */}
-      {!isSubscribed && (
-        <div className="flex items-center justify-center gap-4 border-b border-primary/20 bg-primary/5 px-6 py-2">
-          {mode === "chat" ? (
-            <Badge variant="secondary" className="text-xs">
-              {messagesRemaining > 0
-                ? `${messagesRemaining} free message${messagesRemaining !== 1 ? "s" : ""} left`
-                : "No messages remaining"}
-            </Badge>
-          ) : (
-            <Badge variant="secondary" className="text-xs">
-              {voiceSecondsRemaining > 0
-                ? "Voice call active"
-                : "Voice time used up"}
-            </Badge>
-          )}
-          <Link
-            href="/pricing"
-            className="text-xs font-medium text-primary hover:underline"
+      {/* Top bar */}
+      <div className="flex items-center justify-between border-b border-border px-4 py-2 sm:px-6">
+        {/* Mode toggle */}
+        <div className="flex rounded-lg bg-muted p-1">
+          <Button
+            variant={mode === "chat" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setMode("chat")}
+            className="gap-2"
           >
-            Upgrade for unlimited
-          </Link>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            Chat
+          </Button>
+          <Button
+            variant={mode === "voice" ? "secondary" : "ghost"}
+            size="sm"
+            onClick={() => setMode("voice")}
+            className="gap-2"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+            Voice
+          </Button>
         </div>
-      )}
+
+        {/* Usage info + upgrade */}
+        {!isSubscribed && (
+          <div className="flex items-center gap-3">
+            <Badge variant="secondary" className="text-xs">
+              {mode === "chat"
+                ? messagesRemaining > 0
+                  ? `${messagesRemaining}/${messagesLimit} messages`
+                  : "0 messages left"
+                : voiceSecondsRemaining > 0
+                ? "Voice active"
+                : "Voice time up"}
+            </Badge>
+            <Link
+              href="/pricing"
+              className="text-xs font-medium text-primary hover:underline"
+            >
+              Upgrade
+            </Link>
+          </div>
+        )}
+
+        {/* User email */}
+        <span className="hidden text-xs text-muted-foreground sm:block">
+          {userEmail}
+        </span>
+      </div>
 
       {currentLocked ? (
         /* Paywall */
@@ -187,63 +251,45 @@ export default function ChatClient({
           </div>
         </div>
       ) : (
-        /* Chat/Voice UI */
-        <div className="flex flex-1 flex-col px-4 py-4 sm:px-6">
-          <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4">
-            {/* Mode toggle */}
-            <div className="flex items-center justify-center">
-              <div className="flex rounded-lg bg-muted p-1">
-                <Button
-                  variant={mode === "chat" ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setMode("chat")}
-                  className="gap-2"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        /* Chat/Voice embed */
+        <div className="flex flex-1 flex-col">
+          {mode === "chat" && chatUrl ? (
+            <iframe
+              ref={chatIframeRef}
+              src={chatUrl}
+              className="h-full w-full flex-1"
+              allow="microphone; camera"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              title="Chat with Dr. Cialdini AI"
+              onLoad={() => handleIframeLoad(chatIframeRef.current)}
+            />
+          ) : mode === "voice" && voiceUrl ? (
+            <iframe
+              ref={voiceIframeRef}
+              src={voiceUrl}
+              className="h-full w-full flex-1"
+              allow="microphone; camera"
+              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+              title="Voice call with Dr. Cialdini AI"
+              onLoad={() => handleIframeLoad(voiceIframeRef.current)}
+            />
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <div className="text-center">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <svg className="h-6 w-6 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
-                  Chat
-                </Button>
-                <Button
-                  variant={mode === "voice" ? "secondary" : "ghost"}
-                  size="sm"
-                  onClick={() => setMode("voice")}
-                  className="gap-2"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                  Voice
-                </Button>
-              </div>
-            </div>
-
-            {/* Iframe */}
-            {mode === "chat" && chatUrl ? (
-              <iframe
-                ref={iframeRef}
-                src={chatUrl}
-                className="h-full w-full flex-1 rounded-xl border border-border"
-                allow="microphone; camera"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                title="Chat with Dr. Cialdini AI"
-              />
-            ) : mode === "voice" && voiceUrl ? (
-              <iframe
-                src={voiceUrl}
-                className="h-full w-full flex-1 rounded-xl border border-border"
-                allow="microphone; camera"
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                title="Voice call with Dr. Cialdini AI"
-              />
-            ) : (
-              <div className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border">
-                <p className="text-sm text-muted-foreground">
-                  {mode === "chat" ? "Chat" : "Voice"} embed not configured
+                </div>
+                <p className="text-sm font-medium text-foreground">
+                  {mode === "chat" ? "Chat" : "Voice"} is being set up
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  The AI assistant will be available shortly.
                 </p>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>

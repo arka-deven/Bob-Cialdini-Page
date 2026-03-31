@@ -22,7 +22,6 @@ export default async function ChatPage() {
   const messagesUsed = profile?.messages_used ?? 0;
   const voiceSecondsUsed = profile?.voice_seconds_used ?? 0;
 
-  // Server-side gating: only pass embed URLs if user has credits or is subscribed
   const hasMessageCredits = isSubscribed || messagesUsed < FREE_MESSAGE_LIMIT;
   const hasVoiceCredits = isSubscribed || voiceSecondsUsed < FREE_VOICE_SECONDS;
 
@@ -42,6 +41,7 @@ export default async function ChatPage() {
           chatUrl={chatUrl}
           voiceUrl={voiceUrl}
           userId={user.id}
+          userEmail={user.email || ""}
         />
       </main>
     </div>
