@@ -165,13 +165,14 @@ export default function ChatClient({
   return (
     <div className="flex flex-1 overflow-hidden">
       {/* Sidebar overlay (mobile) */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setSidebarOpen(false)} />
-      )}
+      <div
+        className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-300 lg:hidden ${sidebarOpen ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        onClick={() => setSidebarOpen(false)}
+      />
 
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-card transition-transform duration-200 ease-out lg:relative lg:z-auto ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:w-0 lg:border-0 lg:overflow-hidden"}`}>
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <aside className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-border bg-card transition-all duration-300 ease-in-out lg:relative lg:z-auto ${sidebarOpen ? "translate-x-0 lg:w-64" : "-translate-x-full lg:translate-x-0 lg:w-0 lg:border-0 lg:overflow-hidden"}`}>
+        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
           <span className="text-sm font-semibold text-foreground">Sessions</span>
           <button onClick={() => setSidebarOpen(false)} className="rounded-md p-1 text-muted-foreground hover:text-foreground">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -195,7 +196,7 @@ export default function ChatClient({
       {/* Main area */}
       <div className="flex flex-1 flex-col">
         {/* Top bar */}
-        <div className="flex items-center border-b border-border px-4 py-2">
+        <div className="flex items-center border-b border-border px-4 py-2.5">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="mr-3 rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
