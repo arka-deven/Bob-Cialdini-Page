@@ -152,14 +152,6 @@ export default function ChatClient({
                 Voice
               </Button>
             </div>
-            {!isSubscribed && (
-              <div className="flex items-center gap-3">
-                <Badge variant="secondary" className="text-xs">
-                  {mode === "chat" ? (messagesRemaining > 0 ? `${messagesRemaining}/${messagesLimit}` : "0 left") : (voiceSecondsRemaining > 0 ? "Active" : "Used up")}
-                </Badge>
-                <Link href="/pricing" className="text-xs font-medium text-primary hover:underline">Upgrade</Link>
-              </div>
-            )}
           </div>
 
           <Link href="/profile" className="ml-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary hover:bg-primary/20" title={userEmail}>
@@ -211,7 +203,14 @@ export default function ChatClient({
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg>
                 </button>
               </div>
-              {!isSubscribed && <p className="mt-1.5 text-center text-xs text-muted-foreground">{messagesRemaining} messages remaining</p>}
+              {!isSubscribed && (
+                <div className="mt-2 flex items-center justify-center gap-3">
+                  <Badge variant="secondary" className="text-xs">
+                    {messagesRemaining > 0 ? `${messagesRemaining}/${messagesLimit} messages` : "0 messages left"}
+                  </Badge>
+                  <Link href="/pricing" className="text-xs font-medium text-primary hover:underline">Upgrade</Link>
+                </div>
+              )}
             </div>
           </div>
         ) : (
