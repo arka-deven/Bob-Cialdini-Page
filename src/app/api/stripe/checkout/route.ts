@@ -49,8 +49,10 @@ export async function POST(request: Request) {
       .eq("id", user.id);
   }
 
-  // Use env var for origin to prevent header manipulation
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get("origin") || "";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!appUrl) {
+    return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+  }
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,

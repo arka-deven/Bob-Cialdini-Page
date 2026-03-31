@@ -47,11 +47,15 @@ export default function ChatClient({
   useEffect(() => {
     if (isSubscribed || mode !== "chat") return;
 
+    const ALLOWED_ORIGINS = [
+      "https://embed.delphi.ai",
+      "https://www.delphi.ai",
+      "https://delphi.ai",
+    ];
+
     function handleMessage(event: MessageEvent) {
-      // Delphi emits events when user sends a message
-      // We also listen for any form submission / user input events
       if (
-        event.origin?.includes("delphi.ai") &&
+        ALLOWED_ORIGINS.includes(event.origin) &&
         (event.data?.type === "user_message" ||
           event.data?.type === "message_sent" ||
           event.data?.event === "message")

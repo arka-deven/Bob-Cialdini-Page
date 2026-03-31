@@ -33,8 +33,10 @@ export async function POST(request: Request) {
 
   const stripe = getStripe();
 
-  // Validate origin against known app URL
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get("origin") || "";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!appUrl) {
+    return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
+  }
 
   const session = await stripe.billingPortal.sessions.create({
     customer: profile.stripe_customer_id,
