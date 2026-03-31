@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ export default function ChatClient({
   userEmail,
 }: ChatClientProps) {
   const [mode, setMode] = useState<"chat" | "voice">("chat");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [messagesUsed, setMessagesUsed] = useState(initialMessagesUsed);
   const [voiceSecondsUsed, setVoiceSecondsUsed] = useState(initialVoiceSeconds);
   const [chatUrl, setChatUrl] = useState(initialChatUrl);
@@ -56,7 +58,6 @@ export default function ChatClient({
       .catch(() => {});
   }, []);
 
-  // Send SSO token to iframe once loaded
   const handleIframeLoad = useCallback(
     (iframe: HTMLIFrameElement | null) => {
       if (!iframe || !ssoToken) return;
@@ -68,7 +69,6 @@ export default function ChatClient({
     [ssoToken]
   );
 
-  // Re-send SSO when token arrives after iframe already loaded
   useEffect(() => {
     if (ssoToken) {
       handleIframeLoad(chatIframeRef.current);
@@ -128,7 +128,7 @@ export default function ChatClient({
     }
   }, [isSubscribed, messagesLimit]);
 
-  // Auto voice tracking — syncs to server every 15s when voice tab is active
+  // Auto voice tracking
   useEffect(() => {
     if (isSubscribed || mode !== "voice" || voiceLocked) return;
 
@@ -157,141 +157,220 @@ export default function ChatClient({
   }, [isSubscribed, mode, voiceLocked, voiceSecondsLimit]);
 
   const currentLocked = mode === "chat" ? chatLocked : voiceLocked;
+  const hasEmbed = (mode === "chat" && chatUrl) || (mode === "voice" && voiceUrl);
 
   return (
-    <div className="flex flex-1 flex-col">
-      {/* Top bar */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-2 sm:px-6">
-        {/* Mode toggle */}
-        <div className="flex rounded-lg bg-muted p-1">
-          <Button
-            variant={mode === "chat" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setMode("chat")}
-            className="gap-2"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-            Chat
-          </Button>
-          <Button
-            variant={mode === "voice" ? "secondary" : "ghost"}
-            size="sm"
-            onClick={() => setMode("voice")}
-            className="gap-2"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-            </svg>
-            Voice
-          </Button>
-        </div>
+    <div className="flex flex-1 overflow-hidden">
+      {/* Sidebar overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
-        {/* Usage info + upgrade */}
-        {!isSubscribed && (
-          <div className="flex items-center gap-3">
-            <Badge variant="secondary" className="text-xs">
-              {mode === "chat"
-                ? messagesRemaining > 0
-                  ? `${messagesRemaining}/${messagesLimit} messages`
-                  : "0 messages left"
-                : voiceSecondsRemaining > 0
-                ? "Voice active"
-                : "Voice time up"}
-            </Badge>
-            <Link
-              href="/pricing"
-              className="text-xs font-medium text-primary hover:underline"
+      {/* Sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 w-72 border-r border-border bg-card transition-transform duration-200 lg:relative lg:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex h-full flex-col">
+          {/* Sidebar header */}
+          <div className="flex items-center justify-between border-b border-border p-4">
+            <h2 className="text-sm font-semibold text-foreground">Chat History</h2>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="rounded-md p-1 text-muted-foreground hover:text-foreground lg:hidden"
             >
-              Upgrade
-            </Link>
-          </div>
-        )}
-
-        {/* User email */}
-        <span className="hidden text-xs text-muted-foreground sm:block">
-          {userEmail}
-        </span>
-      </div>
-
-      {currentLocked ? (
-        /* Paywall */
-        <div className="flex flex-1 items-center justify-center px-6">
-          <div className="max-w-md text-center">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <svg
-                className="h-8 w-8 text-primary"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={1.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
-                />
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-foreground">
-              {mode === "chat"
-                ? "You've Used Your 3 Free Messages"
-                : "Your 3-Minute Voice Call Has Ended"}
-            </h2>
-            <p className="mt-3 text-muted-foreground">
-              Upgrade to Pro for unlimited {mode === "chat" ? "messages" : "voice calls"} with Dr. Cialdini AI.
-            </p>
-            <Link
-              href="/pricing"
-              className={cn(buttonVariants({ size: "lg" }), "mt-8")}
-            >
-              Upgrade to Pro
-            </Link>
+            </button>
           </div>
-        </div>
-      ) : (
-        /* Chat/Voice embed */
-        <div className="flex flex-1 flex-col">
-          {mode === "chat" && chatUrl ? (
-            <iframe
-              ref={chatIframeRef}
-              src={chatUrl}
-              className="h-full w-full flex-1"
-              allow="microphone; camera"
-              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-              title="Chat with Dr. Cialdini AI"
-              onLoad={() => handleIframeLoad(chatIframeRef.current)}
-            />
-          ) : mode === "voice" && voiceUrl ? (
-            <iframe
-              ref={voiceIframeRef}
-              src={voiceUrl}
-              className="h-full w-full flex-1"
-              allow="microphone; camera"
-              sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-              title="Voice call with Dr. Cialdini AI"
-              onLoad={() => handleIframeLoad(voiceIframeRef.current)}
-            />
-          ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <div className="text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
-                  <svg className="h-6 w-6 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                  </svg>
-                </div>
-                <p className="text-sm font-medium text-foreground">
-                  {mode === "chat" ? "Chat" : "Voice"} is being set up
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  The AI assistant will be available shortly.
+
+          {/* Session list */}
+          <div className="flex-1 overflow-y-auto p-3">
+            <p className="px-2 py-8 text-center text-xs text-muted-foreground">
+              Your past sessions will appear here once Delphi is connected.
+            </p>
+          </div>
+
+          {/* Sidebar footer — user info */}
+          <div className="border-t border-border p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">
+                {userEmail.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs text-foreground">{userEmail}</p>
+                <p className="text-xs text-muted-foreground">
+                  {isSubscribed ? "Pro" : "Free plan"}
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <div className="flex flex-1 flex-col">
+        {/* Top bar */}
+        <div className="flex items-center justify-between border-b border-border px-4 py-2">
+          <div className="flex items-center gap-3">
+            {/* Sidebar toggle */}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+              aria-label="Toggle sidebar"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+              </svg>
+            </button>
+
+            {/* Mode toggle */}
+            <div className="flex rounded-lg bg-muted p-1">
+              <Button
+                variant={mode === "chat" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setMode("chat")}
+                className="gap-2"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Chat
+              </Button>
+              <Button
+                variant={mode === "voice" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setMode("voice")}
+                className="gap-2"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                </svg>
+                Voice
+              </Button>
+            </div>
+          </div>
+
+          {/* Right side — usage + upgrade */}
+          {!isSubscribed && (
+            <div className="flex items-center gap-3">
+              <Badge variant="secondary" className="text-xs">
+                {mode === "chat"
+                  ? messagesRemaining > 0
+                    ? `${messagesRemaining}/${messagesLimit} messages`
+                    : "0 messages left"
+                  : voiceSecondsRemaining > 0
+                  ? "Voice active"
+                  : "Voice time up"}
+              </Badge>
+              <Link
+                href="/pricing"
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                Upgrade
+              </Link>
+            </div>
           )}
         </div>
-      )}
+
+        {currentLocked ? (
+          /* Paywall */
+          <div className="flex flex-1 items-center justify-center px-6">
+            <div className="max-w-md text-center">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <svg className="h-8 w-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-bold text-foreground">
+                {mode === "chat"
+                  ? "You've Used Your 3 Free Messages"
+                  : "Your 3-Minute Voice Call Has Ended"}
+              </h2>
+              <p className="mt-3 text-muted-foreground">
+                Upgrade to Pro for unlimited {mode === "chat" ? "messages" : "voice calls"} with Dr. Cialdini AI.
+              </p>
+              <Link href="/pricing" className={cn(buttonVariants({ size: "lg" }), "mt-8")}>
+                Upgrade to Pro
+              </Link>
+            </div>
+          </div>
+        ) : hasEmbed ? (
+          /* Delphi iframe */
+          <div className="flex flex-1 flex-col">
+            {mode === "chat" && chatUrl ? (
+              <iframe
+                ref={chatIframeRef}
+                src={chatUrl}
+                className="h-full w-full flex-1"
+                allow="microphone; camera"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                title="Chat with Dr. Cialdini AI"
+                onLoad={() => handleIframeLoad(chatIframeRef.current)}
+              />
+            ) : (
+              <iframe
+                ref={voiceIframeRef}
+                src={voiceUrl}
+                className="h-full w-full flex-1"
+                allow="microphone; camera"
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                title="Voice call with Dr. Cialdini AI"
+                onLoad={() => handleIframeLoad(voiceIframeRef.current)}
+              />
+            )}
+          </div>
+        ) : (
+          /* Placeholder chat UI when Delphi not configured */
+          <div className="flex flex-1 flex-col">
+            {/* Chat area */}
+            <div className="flex flex-1 flex-col items-center justify-center px-6">
+              <div className="relative mb-4 h-16 w-16 overflow-hidden rounded-full border-2 border-border">
+                <Image
+                  src="/robert-cialdini.jpg"
+                  alt="Dr. Robert Cialdini"
+                  fill
+                  className="object-cover object-top"
+                  sizes="64px"
+                />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground">Dr. Cialdini AI</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {mode === "chat"
+                  ? "Ask me anything about influence and persuasion."
+                  : "Start a voice conversation about the science of influence."}
+              </p>
+            </div>
+
+            {/* Input bar placeholder */}
+            <div className="border-t border-border p-4">
+              <div className="mx-auto flex max-w-3xl items-center gap-3 rounded-xl border border-border bg-muted/50 px-4 py-3">
+                <button className="shrink-0 text-muted-foreground hover:text-foreground" aria-label="Attach file">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                  </svg>
+                </button>
+                <span className="flex-1 text-sm text-muted-foreground">Type...</span>
+                <button className="shrink-0 text-muted-foreground hover:text-foreground" aria-label="Voice input">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                  </svg>
+                </button>
+              </div>
+              {!isSubscribed && (
+                <p className="mt-2 text-center text-xs text-muted-foreground">
+                  {messagesRemaining} Messages Remaining
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
