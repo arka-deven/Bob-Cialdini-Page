@@ -3,6 +3,13 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimiters, rateLimit } from "@/lib/rate-limit";
 import { FREE_MESSAGE_LIMIT, FREE_VOICE_SECONDS } from "@/lib/constants";
+import {
+  getCachedProfile,
+  setCachedProfile,
+  invalidateProfile,
+  type CachedProfile,
+} from "@/lib/cache";
+import { validateOrigin } from "@/lib/csrf";
 
 const usageSchema = z.object({
   type: z.enum(["message", "voice"]),
@@ -25,14 +32,22 @@ export async function GET() {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("subscription_status, messages_used, voice_seconds_used")
-    .eq("id", user.id)
-    .single();
+  // Try cache first
+  let profile: CachedProfile | null = await getCachedProfile(user.id);
 
   if (!profile) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const { data } = await supabase
+      .from("profiles")
+      .select("subscription_status, messages_used, voice_seconds_used, stripe_customer_id")
+      .eq("id", user.id)
+      .single();
+
+    if (!data) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    profile = data as CachedProfile;
+    await setCachedProfile(user.id, profile);
   }
 
   const isSubscribed = profile.subscription_status === "active";
@@ -54,6 +69,9 @@ export async function GET() {
 
 // POST: Consume a credit
 export async function POST(request: Request) {
+  const csrfError = validateOrigin(request);
+  if (csrfError) return csrfError;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -122,10 +140,11 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !data) {
-      // Race condition — re-read and check
+      await invalidateProfile(user.id);
       return NextResponse.json({ error: "Please retry" }, { status: 409 });
     }
 
+    await invalidateProfile(user.id);
     return NextResponse.json({
       allowed: true,
       remaining: FREE_MESSAGE_LIMIT - data.messages_used,
@@ -155,9 +174,11 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !data) {
+      await invalidateProfile(user.id);
       return NextResponse.json({ error: "Please retry" }, { status: 409 });
     }
 
+    await invalidateProfile(user.id);
     return NextResponse.json({
       allowed: true,
       remaining: Math.max(0, FREE_VOICE_SECONDS - data.voice_seconds_used),

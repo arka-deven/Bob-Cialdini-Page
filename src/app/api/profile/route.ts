@@ -2,18 +2,23 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimiters, rateLimit } from "@/lib/rate-limit";
+import { invalidateProfile } from "@/lib/cache";
+import { validateOrigin } from "@/lib/csrf";
 
 const updateSchema = z.object({
   full_name: z.string().max(100).optional(),
   phone: z
     .string()
     .max(20)
-    .regex(/^\+?[0-9\s()-]*$/, "Invalid phone format")
+    .regex(/^\+1[2-9]\d{9}$/, "Please enter a valid US or Canadian phone number")
     .optional(),
   newsletter: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {
+  const csrfError = validateOrigin(request);
+  if (csrfError) return csrfError;
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -49,5 +54,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Update failed" }, { status: 500 });
   }
 
+  await invalidateProfile(user.id);
   return NextResponse.json({ success: true });
 }

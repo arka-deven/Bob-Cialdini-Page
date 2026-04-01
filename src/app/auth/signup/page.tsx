@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,6 +15,7 @@ import {
   type OtpInput,
 } from "@/lib/validations";
 import Header from "@/components/Header";
+import Turnstile from "@/components/Turnstile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -29,9 +30,25 @@ export default function SignupPage() {
   const [phoneValue, setPhoneValue] = useState("");
   const supabase = createClient();
 
+  const [cancelling, setCancelling] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
   const emailForm = useForm<EmailSignupInput>({ resolver: zodResolver(emailSignupSchema) });
   const phoneForm = useForm<PhoneInput>({ resolver: zodResolver(phoneSchema) });
   const otpForm = useForm<OtpInput>({ resolver: zodResolver(otpSchema) });
+
+  const handleTurnstile = useCallback((token: string) => setTurnstileToken(token), []);
+
+  async function handleCancel() {
+    setCancelling(true);
+    const res = await fetch("/api/auth/cancel-signup", { method: "POST" });
+    if (res.ok) {
+      window.location.href = "/auth/signup";
+    } else {
+      toast.error("Failed to cancel. Please try again.");
+      setCancelling(false);
+    }
+  }
 
   async function handleGoogleSignup() {
     setLoading(true);
@@ -39,7 +56,7 @@ export default function SignupPage() {
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error("Unable to sign in with Google. Please try again.");
     setLoading(false);
   }
 
@@ -54,7 +71,7 @@ export default function SignupPage() {
       },
     });
     if (error) {
-      toast.error(error.message);
+      toast.error("Unable to create account. Please try again.");
       setLoading(false);
       return;
     }
@@ -65,13 +82,19 @@ export default function SignupPage() {
 
   async function onPhoneSubmit(data: PhoneInput) {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({ phone: data.phone });
-    if (error) {
-      toast.error(error.message);
-    } else {
+    // Send OTP via server-side route (applies rate limiting + Turnstile)
+    const res = await fetch("/api/auth/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: data.phone, turnstileToken }),
+    });
+    if (res.ok) {
       setPhoneValue(data.phone);
       setStep("otp");
       toast.success("Verification code sent!");
+    } else {
+      const err = await res.json().catch(() => null);
+      toast.error(err?.error || "Failed to send code. Please try again.");
     }
     setLoading(false);
   }
@@ -81,15 +104,13 @@ export default function SignupPage() {
     const { error } = await supabase.auth.verifyOtp({
       phone: phoneValue,
       token: data.token,
-      type: "sms",
+      type: "phone_change",
     });
     if (error) {
-      toast.error(error.message);
+      toast.error("Invalid or expired code. Please try again.");
       setLoading(false);
     } else {
       toast.success("Phone verified!");
-      // Store phone in user metadata
-      await supabase.auth.updateUser({ data: { phone_number: phoneValue } });
       window.location.href = "/chat";
     }
   }
@@ -198,12 +219,21 @@ export default function SignupPage() {
             {step === "phone" && (
               <form onSubmit={phoneForm.handleSubmit(onPhoneSubmit)} className="space-y-4">
                 <div>
-                  <Input type="tel" placeholder="+1 (555) 000-0000" {...phoneForm.register("phone")} />
+                  <Input type="tel" placeholder="+12125551234" {...phoneForm.register("phone")} />
                   {phoneForm.formState.errors.phone && <p className="mt-1 text-xs text-destructive">{phoneForm.formState.errors.phone.message}</p>}
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Turnstile onVerify={handleTurnstile} />
+                <Button type="submit" className="w-full" disabled={loading || !turnstileToken}>
                   {loading ? "Sending code..." : "Send Verification Code"}
                 </Button>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={cancelling || loading}
+                  className="w-full text-sm text-destructive hover:text-destructive/80 disabled:opacity-50"
+                >
+                  {cancelling ? "Cancelling..." : "Cancel signup"}
+                </button>
               </form>
             )}
 
@@ -217,6 +247,14 @@ export default function SignupPage() {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Verifying..." : "Verify Phone"}
                 </Button>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={cancelling || loading}
+                  className="w-full text-sm text-destructive hover:text-destructive/80 disabled:opacity-50"
+                >
+                  {cancelling ? "Cancelling..." : "Cancel signup"}
+                </button>
               </form>
             )}
 

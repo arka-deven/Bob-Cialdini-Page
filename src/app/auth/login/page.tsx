@@ -27,7 +27,7 @@ export default function LoginPage() {
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     });
-    if (error) toast.error(error.message);
+    if (error) toast.error("Unable to sign in. Please check your credentials.");
     setLoading(false);
   }
 
@@ -35,7 +35,7 @@ export default function LoginPage() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword(data);
     if (error) {
-      toast.error(error.message);
+      toast.error("Invalid email or password");
       setLoading(false);
     } else {
       toast.success("Welcome back!");

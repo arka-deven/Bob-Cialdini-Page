@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { rateLimiters, rateLimit } from "@/lib/rate-limit";
 
 const ALLOWED_REDIRECTS = ["/chat", "/pricing", "/support", "/"];
 
@@ -14,6 +15,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(
       `${origin}/auth/login?error=${encodeURIComponent(errorDescription || error)}`
     );
+  }
+
+  // Rate limit by IP to prevent brute-force code exchange
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const rl = await rateLimit(rateLimiters?.auth, `callback:${ip}`, "auth");
+  if (!rl.success) {
+    return NextResponse.redirect(`${origin}/auth/login?error=too_many_attempts`);
   }
 
   const redirectPath = ALLOWED_REDIRECTS.includes(next) ? next : "/chat";

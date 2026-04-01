@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import Header from "@/components/Header";
+import Turnstile from "@/components/Turnstile";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,17 +14,38 @@ export default function VerifyPhonePage() {
   const [phone, setPhone] = useState("");
   const [token, setToken] = useState("");
   const [loading, setLoading] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const supabase = createClient();
+
+  const handleTurnstile = useCallback((t: string) => setTurnstileToken(t), []);
+
+  async function handleCancel() {
+    setCancelling(true);
+    const res = await fetch("/api/auth/cancel-signup", { method: "POST" });
+    if (res.ok) {
+      window.location.href = "/auth/signup";
+    } else {
+      toast.error("Failed to cancel. Please try again.");
+      setCancelling(false);
+    }
+  }
 
   async function handleSendOtp() {
     if (!phone.trim()) { toast.error("Enter your phone number"); return; }
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ phone });
-    if (error) {
-      toast.error(error.message);
-    } else {
+    // Send OTP via server-side route (applies rate limiting + Turnstile)
+    const res = await fetch("/api/auth/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone, turnstileToken }),
+    });
+    if (res.ok) {
       toast.success("Verification code sent!");
       setStep("otp");
+    } else {
+      const err = await res.json().catch(() => null);
+      toast.error(err?.error || "Failed to send code. Please try again.");
     }
     setLoading(false);
   }
@@ -33,7 +55,7 @@ export default function VerifyPhonePage() {
     setLoading(true);
     const { error } = await supabase.auth.verifyOtp({ phone, token, type: "phone_change" });
     if (error) {
-      toast.error(error.message);
+      toast.error("Invalid or expired code. Please try again.");
       setLoading(false);
     } else {
       toast.success("Phone verified!");
@@ -57,11 +79,12 @@ export default function VerifyPhonePage() {
               <>
                 <Input
                   type="tel"
-                  placeholder="+1 (555) 000-0000"
+                  placeholder="+12125551234"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
-                <Button onClick={handleSendOtp} className="w-full" disabled={loading}>
+                <Turnstile onVerify={handleTurnstile} />
+                <Button onClick={handleSendOtp} className="w-full" disabled={loading || !turnstileToken}>
                   {loading ? "Sending..." : "Send Verification Code"}
                 </Button>
               </>
@@ -78,11 +101,21 @@ export default function VerifyPhonePage() {
                 <Button onClick={handleVerifyOtp} className="w-full" disabled={loading}>
                   {loading ? "Verifying..." : "Verify Phone"}
                 </Button>
-                <button onClick={() => { setStep("phone"); setToken(""); }} className="w-full text-sm text-muted-foreground hover:text-foreground">
+                <button onClick={() => { setStep("phone"); setToken(""); setTurnstileToken(null); }} className="w-full text-sm text-muted-foreground hover:text-foreground">
                   Use a different number
                 </button>
               </>
             )}
+
+            <div className="pt-2 border-t">
+              <button
+                onClick={handleCancel}
+                disabled={cancelling || loading}
+                className="w-full text-sm text-destructive hover:text-destructive/80 disabled:opacity-50"
+              >
+                {cancelling ? "Cancelling..." : "Cancel and delete my account"}
+              </button>
+            </div>
           </CardContent>
         </Card>
       </main>

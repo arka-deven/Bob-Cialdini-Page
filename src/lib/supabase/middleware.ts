@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { rateLimiters, rateLimit } from "@/lib/rate-limit";
 
 export async function updateSession(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -13,6 +14,19 @@ export async function updateSession(request: NextRequest) {
   // Let the callback handle its own session — middleware must not interfere
   if (request.nextUrl.pathname.startsWith("/auth/callback")) {
     return NextResponse.next({ request });
+  }
+
+  // IP-based rate limiting on signup page to prevent trial abuse
+  // Limits account creation attempts to 5 per hour per IP
+  if (request.nextUrl.pathname === "/auth/signup" && request.method === "GET") {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rl = await rateLimit(rateLimiters?.auth, `signup-page:${ip}`, "auth");
+    if (!rl.success) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = "/auth/login";
+      redirectUrl.searchParams.set("error", "too_many_attempts");
+      return NextResponse.redirect(redirectUrl);
+    }
   }
 
   let supabaseResponse = NextResponse.next({ request });
@@ -56,7 +70,8 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Phone verification enforcement — chat requires a verified phone
-  const hasPhone = user?.phone || user?.user_metadata?.phone_number;
+  // SECURITY: only check user.phone (server-validated), NOT user_metadata (user-writable)
+  const hasPhone = !!user?.phone;
 
   if (user && !hasPhone && pathname.startsWith("/chat")) {
     const redirectUrl = request.nextUrl.clone();

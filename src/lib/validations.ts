@@ -13,6 +13,11 @@ export const emailSignupSchema = z.object({
     .max(72, "Password must be less than 72 characters"),
 });
 
+// Allowed country codes — restrict to prevent SMS pumping to premium-rate numbers
+// Add more country codes as you expand to new markets
+const ALLOWED_PHONE_REGEX = /^\+1[2-9]\d{9}$/; // US/CA only
+const PHONE_ERROR = "Please enter a valid US or Canadian phone number (e.g. +12125551234)";
+
 export const emailSignupWithPhoneSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z
@@ -22,7 +27,7 @@ export const emailSignupWithPhoneSchema = z.object({
   phone: z
     .string()
     .min(10, "Please enter a valid phone number")
-    .regex(/^\+?[1-9]\d{1,14}$/, "Please enter a valid E.164 phone number"),
+    .regex(ALLOWED_PHONE_REGEX, PHONE_ERROR),
   newsletter: z.boolean().optional(),
 });
 
@@ -30,7 +35,7 @@ export const phoneSchema = z.object({
   phone: z
     .string()
     .min(10, "Please enter a valid phone number")
-    .regex(/^\+?[1-9]\d{1,14}$/, "Please enter a valid E.164 phone number"),
+    .regex(ALLOWED_PHONE_REGEX, PHONE_ERROR),
 });
 
 export const otpSchema = z.object({

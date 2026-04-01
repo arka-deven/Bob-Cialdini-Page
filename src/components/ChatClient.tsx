@@ -118,19 +118,45 @@ export default function ChatClient({
   const currentLocked = mode === "chat" ? chatLocked : voiceLocked;
   const hasEmbed = (mode === "chat" && chatUrl) || (mode === "voice" && voiceUrl);
 
-  // --- SSO ---
+  const [iframeLoading, setIframeLoading] = useState(true);
+  const [iframeError, setIframeError] = useState(false);
+
+  // --- SSO with retry logic (Delphi recommends 5 retries, 500ms intervals) ---
   useEffect(() => {
     fetch("/api/delphi/token").then((r) => r.json()).then((d) => { if (d.token) setSsoToken(d.token); }).catch(() => {});
   }, []);
 
-  const handleIframeLoad = useCallback((iframe: HTMLIFrameElement | null) => {
-    if (!iframe || !ssoToken) return;
-    iframe.contentWindow?.postMessage({ type: "sso_login", token: ssoToken }, "https://embed.delphi.ai");
+  const sendSsoWithRetry = useCallback((iframe: HTMLIFrameElement | null, retries = 5) => {
+    if (!iframe || !ssoToken || retries <= 0) return;
+    try {
+      iframe.contentWindow?.postMessage({ type: "sso_login", token: ssoToken }, "https://embed.delphi.ai");
+    } catch { /* cross-origin errors are expected during early loads */ }
+    if (retries > 1) {
+      setTimeout(() => sendSsoWithRetry(iframe, retries - 1), 500);
+    }
   }, [ssoToken]);
 
+  const handleIframeLoad = useCallback((iframe: HTMLIFrameElement | null) => {
+    setIframeLoading(false);
+    setIframeError(false);
+    sendSsoWithRetry(iframe, 5);
+  }, [sendSsoWithRetry]);
+
   useEffect(() => {
-    if (ssoToken) { handleIframeLoad(chatIframeRef.current); handleIframeLoad(voiceIframeRef.current); }
-  }, [ssoToken, handleIframeLoad]);
+    if (ssoToken) { sendSsoWithRetry(chatIframeRef.current, 5); sendSsoWithRetry(voiceIframeRef.current, 5); }
+  }, [ssoToken, sendSsoWithRetry]);
+
+  // Iframe load timeout — if iframe doesn't load within 15s, show error
+  useEffect(() => {
+    if (!hasEmbed) return;
+    setIframeLoading(true);
+    setIframeError(false);
+    const timer = setTimeout(() => {
+      setIframeLoading(false);
+      setIframeError(true);
+    }, 15000);
+    return () => clearTimeout(timer);
+  }, [mode, hasEmbed]);
 
   // --- Message counting ---
   useEffect(() => {
@@ -250,11 +276,35 @@ export default function ChatClient({
             </div>
           </div>
         ) : hasEmbed ? (
-          <div className="flex flex-1 flex-col">
+          <div className="relative flex flex-1 flex-col">
+            {/* Loading spinner overlay */}
+            {iframeLoading && !iframeError && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
+                <p className="mt-3 text-sm text-muted-foreground">Connecting to Dr. Cialdini...</p>
+              </div>
+            )}
+            {/* Error state when iframe fails to load */}
+            {iframeError && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background px-6">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10">
+                  <svg className="h-7 w-7 text-destructive" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-foreground">Dr. Cialdini is briefly unavailable</h3>
+                <p className="mt-2 text-sm text-muted-foreground text-center max-w-sm">
+                  The chat service is experiencing issues. Please try again in a moment.
+                </p>
+                <Button onClick={() => { setIframeError(false); setIframeLoading(true); }} className="mt-6" variant="outline">
+                  Try Again
+                </Button>
+              </div>
+            )}
             {mode === "chat" && chatUrl ? (
-              <iframe ref={chatIframeRef} src={chatUrl} className="h-full w-full flex-1" allow="microphone; camera" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" title="Chat" onLoad={() => handleIframeLoad(chatIframeRef.current)} />
+              <iframe ref={chatIframeRef} src={chatUrl} className="h-full w-full flex-1" allow="microphone; camera" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" title="Chat" onLoad={() => handleIframeLoad(chatIframeRef.current)} onError={() => { setIframeLoading(false); setIframeError(true); }} />
             ) : (
-              <iframe ref={voiceIframeRef} src={voiceUrl} className="h-full w-full flex-1" allow="microphone; camera" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" title="Voice" onLoad={() => handleIframeLoad(voiceIframeRef.current)} />
+              <iframe ref={voiceIframeRef} src={voiceUrl} className="h-full w-full flex-1" allow="microphone; camera" sandbox="allow-scripts allow-same-origin allow-popups allow-forms" title="Voice" onLoad={() => handleIframeLoad(voiceIframeRef.current)} onError={() => { setIframeLoading(false); setIframeError(true); }} />
             )}
           </div>
         ) : mode === "chat" ? (

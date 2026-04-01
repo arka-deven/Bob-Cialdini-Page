@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { SignJWT, importPKCS8 } from "jose";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimiters, rateLimit } from "@/lib/rate-limit";
+import { getCachedDelphiToken, setCachedDelphiToken } from "@/lib/cache";
 
 export async function GET() {
   const supabase = await createClient();
@@ -24,6 +25,12 @@ export async function GET() {
     return NextResponse.json({ token: null });
   }
 
+  // Return cached token if available (avoids repeated RSA signing)
+  const cachedToken = await getCachedDelphiToken(user.id);
+  if (cachedToken) {
+    return NextResponse.json({ token: cachedToken });
+  }
+
   try {
     const privateKey = await importPKCS8(privateKeyPem, "RS256");
 
@@ -33,6 +40,7 @@ export async function GET() {
       .setExpirationTime("1h")
       .sign(privateKey);
 
+    await setCachedDelphiToken(user.id, token);
     return NextResponse.json({ token });
   } catch {
     return NextResponse.json({ error: "SSO configuration error" }, { status: 500 });
