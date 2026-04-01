@@ -126,37 +126,57 @@ export default function ChatClient({
     fetch("/api/delphi/token").then((r) => r.json()).then((d) => { if (d.token) setSsoToken(d.token); }).catch(() => {});
   }, []);
 
-  const sendSsoWithRetry = useCallback((iframe: HTMLIFrameElement | null, retries = 5) => {
-    if (!iframe || !ssoToken || retries <= 0) return;
+  const sendSsoMessage = useCallback((iframe: HTMLIFrameElement | null) => {
+    if (!iframe || !ssoToken) return;
     try {
       iframe.contentWindow?.postMessage({ type: "sso_login", token: ssoToken }, "https://embed.delphi.ai");
     } catch { /* cross-origin errors are expected during early loads */ }
-    if (retries > 1) {
-      setTimeout(() => sendSsoWithRetry(iframe, retries - 1), 500);
-    }
   }, [ssoToken]);
 
   const handleIframeLoad = useCallback((iframe: HTMLIFrameElement | null) => {
     setIframeLoading(false);
     setIframeError(false);
-    sendSsoWithRetry(iframe, 5);
-  }, [sendSsoWithRetry]);
+    // Retry SSO 5 times at 500ms intervals
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => sendSsoMessage(iframe), i * 500);
+    }
+  }, [sendSsoMessage]);
 
   useEffect(() => {
-    if (ssoToken) { sendSsoWithRetry(chatIframeRef.current, 5); sendSsoWithRetry(voiceIframeRef.current, 5); }
-  }, [ssoToken, sendSsoWithRetry]);
+    if (!ssoToken) return;
+    for (let i = 0; i < 5; i++) {
+      setTimeout(() => { sendSsoMessage(chatIframeRef.current); sendSsoMessage(voiceIframeRef.current); }, i * 500);
+    }
+  }, [ssoToken, sendSsoMessage]);
+
+  // Reset iframe state when mode changes
+  const iframeModeKey = `${mode}-${hasEmbed}`;
+  const [prevModeKey, setPrevModeKey] = useState(iframeModeKey);
+  if (iframeModeKey !== prevModeKey) {
+    setPrevModeKey(iframeModeKey);
+    setIframeLoading(true);
+    setIframeError(false);
+  }
 
   // Iframe load timeout — if iframe doesn't load within 15s, show error
   useEffect(() => {
-    if (!hasEmbed) return;
-    setIframeLoading(true);
-    setIframeError(false);
+    if (!hasEmbed || !iframeLoading) return;
     const timer = setTimeout(() => {
       setIframeLoading(false);
       setIframeError(true);
     }, 15000);
     return () => clearTimeout(timer);
-  }, [mode, hasEmbed]);
+  }, [hasEmbed, iframeLoading]);
+
+  // --- Credit consumption ---
+  const consumeCredit = useCallback(async () => {
+    if (isSubscribed) return;
+    const res = await fetch("/api/usage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "message" }) });
+    if (res.status === 429) { toast.error("Slow down."); return; }
+    const data = await res.json();
+    if (!data.allowed) { setMessagesUsed(messagesLimit); setChatUrl(""); toast.error("You've used all 3 free messages."); }
+    else { setMessagesUsed(messagesLimit - data.remaining); if (data.remaining === 1) toast.warning("1 free message left"); }
+  }, [isSubscribed, messagesLimit]);
 
   // --- Message counting ---
   useEffect(() => {
@@ -167,16 +187,7 @@ export default function ChatClient({
     }
     window.addEventListener("message", handle);
     return () => window.removeEventListener("message", handle);
-  }, [isSubscribed, mode, messagesUsed]);
-
-  const consumeCredit = useCallback(async () => {
-    if (isSubscribed) return;
-    const res = await fetch("/api/usage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ type: "message" }) });
-    if (res.status === 429) { toast.error("Slow down."); return; }
-    const data = await res.json();
-    if (!data.allowed) { setMessagesUsed(messagesLimit); setChatUrl(""); toast.error("You've used all 3 free messages."); }
-    else { setMessagesUsed(messagesLimit - data.remaining); if (data.remaining === 1) toast.warning("1 free message left"); }
-  }, [isSubscribed, messagesLimit]);
+  }, [isSubscribed, mode, messagesUsed, consumeCredit]);
 
   // --- Voice tracking ---
   useEffect(() => {

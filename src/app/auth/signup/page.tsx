@@ -111,7 +111,7 @@ export default function SignupPage() {
       setLoading(false);
     } else {
       toast.success("Phone verified!");
-      window.location.href = "/chat";
+      window.location.assign("/chat");
     }
   }
 

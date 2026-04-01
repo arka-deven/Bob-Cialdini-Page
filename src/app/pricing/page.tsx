@@ -53,7 +53,7 @@ export default function PricingPage() {
     }
 
     if (data.url) {
-      window.location.href = data.url;
+      window.location.assign(data.url);
     } else {
       toast.error("Something went wrong. Please try again.");
     }

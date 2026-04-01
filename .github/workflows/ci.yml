@@ -10,73 +10,96 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NODE_VERSION: 22
+  # Placeholder env vars for build (no real secrets)
+  NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+  NEXT_PUBLIC_APP_URL: http://localhost:3000
+  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+  NEXT_PUBLIC_STRIPE_MONTHLY_PRICE_ID: price_placeholder
+  NEXT_PUBLIC_STRIPE_YEARLY_PRICE_ID: price_placeholder
+
+# -----------------------------------------------------------------------------
+# Job 1: Quality — lint, type check, build
+# -----------------------------------------------------------------------------
 jobs:
-  lint-type-build:
-    name: Lint, Type Check & Build
+  quality:
+    name: Lint · Types · Build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: TypeScript type check
+      - name: ESLint
+        run: npx eslint . --max-warnings 10
+
+      - name: TypeScript
         run: npx tsc --noEmit
 
-      - name: Lint
-        run: npx next lint
-
       - name: Build
-        run: npx next build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
-          NEXT_PUBLIC_APP_URL: http://localhost:3000
+        run: npm run build
 
-  security-audit:
+  # ---------------------------------------------------------------------------
+  # Job 2: Security — dependency audit, secret leak detection
+  # ---------------------------------------------------------------------------
+  security:
     name: Security Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: npm audit (known CVEs)
+      - name: Dependency audit
         run: npm audit --audit-level=high
         continue-on-error: true
 
-      - name: Check for secrets in code
+      - name: No .env files committed
         run: |
-          # Fail if any .env files with actual values are committed
-          if git ls-files | grep -E '\.env$|\.env\.local$|\.env\.production$'; then
-            echo "ERROR: .env file with secrets found in git!"
+          found=$(git ls-files | grep -E '^\.env$|\.env\.local$|\.env\.production$|\.env\.sentry' || true)
+          if [ -n "$found" ]; then
+            echo "::error::Secret files committed to repo: $found"
             exit 1
           fi
-          echo "No secret files in git."
 
-      - name: Verify service role key not in client code
+      - name: Service role key not exposed to client
         run: |
-          # Ensure SUPABASE_SERVICE_ROLE_KEY is never prefixed with NEXT_PUBLIC_
-          if grep -r "NEXT_PUBLIC_.*SERVICE_ROLE" src/ --include="*.ts" --include="*.tsx"; then
-            echo "ERROR: Service role key exposed to client!"
+          if grep -rn "NEXT_PUBLIC_.*SERVICE_ROLE" src/ --include="*.ts" --include="*.tsx"; then
+            echo "::error::SUPABASE_SERVICE_ROLE_KEY exposed to client bundle"
             exit 1
           fi
-          echo "Service role key is server-only."
 
+      - name: No hardcoded secrets in source
+        run: |
+          # Check for common secret patterns (Stripe, Supabase JWTs, Sentry tokens)
+          if grep -rn 'sk_live_\|sk_test_[a-zA-Z0-9]\{20,\}\|whsec_[a-zA-Z0-9]\{20,\}\|sntrys_[a-zA-Z0-9]\{20,\}' src/ --include="*.ts" --include="*.tsx"; then
+            echo "::error::Hardcoded secret found in source code"
+            exit 1
+          fi
+
+  # ---------------------------------------------------------------------------
+  # Job 3: CodeQL — static analysis for security vulnerabilities
+  # ---------------------------------------------------------------------------
   codeql:
-    name: CodeQL SAST
+    name: CodeQL Analysis
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       security-events: write
     steps:
@@ -86,6 +109,7 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: javascript-typescript
+          queries: security-extended
 
       - name: Run CodeQL analysis
         uses: github/codeql-action/analyze@v3
